@@ -10,4 +10,5 @@ __pycache__/
 
 .DS_Store
 *.db
+*.db-shm
 *.sqlite

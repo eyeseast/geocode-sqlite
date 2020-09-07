@@ -55,7 +55,8 @@ def geocode_table(
         if result:
             pks = [row[pk] for pk in table.pks]
             table.update(
-                pks, {"latitude": result.latitude, "longitude": result.longitude}
+                pks,
+                {latitude_column: result.latitude, longitude_column: result.longitude},
             )
             count += 1
 

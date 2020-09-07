@@ -37,9 +37,8 @@ def db():
     yield db
 
     # start fresh every test
-    print("Dropping tables")
-    db[TABLE_NAME].drop()
-    db[GEO_TABLE].drop()
+    print("Deleting test database")
+    DB_PATH.unlink()
 
 
 @pytest.fixture
@@ -66,12 +65,43 @@ def test_cli_geocode_table(db, geocoder):
     )
 
     print(result.stdout)
-
     assert 0 == result.exit_code
 
     for row in table.rows:
         assert type(row.get("latitude")) == float
         assert type(row.get("longitude")) == float
+
+        result = geo_table.get(row["id"])
+
+
+def test_custom_fieldnames(db, geocoder):
+    runner = CliRunner()
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    result = runner.invoke(
+        cli,
+        [
+            "--location",
+            "{id}",
+            "--latitude",
+            "lat",
+            "--longitude",
+            "lng",
+            str(DB_PATH),
+            str(TABLE_NAME),
+            "test",
+            "-p",
+            str(DB_PATH),
+        ],
+    )
+
+    print(result.stdout)
+    assert 0 == result.exit_code
+
+    for row in table.rows:
+        assert type(row.get("lat")) == float
+        assert type(row.get("lng")) == float
 
         result = geo_table.get(row["id"])
 

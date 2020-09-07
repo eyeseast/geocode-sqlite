@@ -4,12 +4,12 @@ import pathlib
 import pytest
 
 from click.testing import CliRunner
-from dummy_geocoder import DummyGeocoder
 from geojson_to_sqlite.utils import import_features
 from geopy.location import Location
 from sqlite_utils import Database
 
-from geocode_sqlite.cli import cli
+from geocode_sqlite.cli import cli, use_tester
+from geocode_sqlite.testing import DummyGeocoder
 from geocode_sqlite.utils import geocode_row, geocode_table
 
 tests = pathlib.Path(__file__).parent
@@ -53,6 +53,27 @@ def test_version():
         result = runner.invoke(cli, ["--version"])
         assert 0 == result.exit_code
         assert result.output.startswith("cli, version ")
+
+
+def test_cli_geocode_table(db, geocoder):
+    runner = CliRunner()
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    # run the cli with our test geocoder
+    result = runner.invoke(
+        cli, ["-l", "{id}", str(DB_PATH), str(TABLE_NAME), "test", "-p", str(DB_PATH)]
+    )
+
+    print(result.stdout)
+
+    assert 0 == result.exit_code
+
+    for row in table.rows:
+        assert type(row.get("latitude")) == float
+        assert type(row.get("longitude")) == float
+
+        result = geo_table.get(row["id"])
 
 
 def test_geocode_row(db, geocoder):

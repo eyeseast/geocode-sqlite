@@ -9,11 +9,15 @@ from geopy.location import Location
 from sqlite_utils import Database
 from sqlite_utils.db import NotFoundError
 
-DB_PATH = "test.db"
+DB_PATH = "../tests/test.db"
 TABLE_NAME = "innout_geo"
 
 
 class DummyGeocoder(Geocoder):
+    """
+    This is a fake geocoder. Don't use it for anything besides tests.
+    """
+
     def __init__(self, db=None, table_name=TABLE_NAME, **kwargs):
         if db is None:
             db = Database(DB_PATH)

@@ -8,6 +8,15 @@ tests/test.db: tests/innout.geojson tests/innout.csv
 test: tests/test.db
 	geocode-sqlite -l "{id}" $^ innout_test test -p $^
 
+.PHONY: nominatum
+nominatum: tests/test.db
+	geocode-sqlite -l "{full}, {city}, {state} {postcode}" \
+	 --delay 1 \
+	 tests/test.db \
+	 innout_test \
+	 nominatum \
+	 --user-agent "geocode-sqlite"
+
 .PHONY: clean
 clean:
 	rm tests/test.db

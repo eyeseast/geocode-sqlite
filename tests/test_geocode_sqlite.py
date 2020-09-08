@@ -1,4 +1,5 @@
 import csv
+import datetime
 import json
 import pathlib
 import pytest
@@ -106,6 +107,44 @@ def test_custom_fieldnames(db, geocoder):
         result = geo_table.get(row["id"])
 
 
+def test_rate_limiting(db, geocoder):
+    table = db[TABLE_NAME]
+    runner = CliRunner()
+
+    # geocode once
+    geocode_table(db, TABLE_NAME, geocoder, "{id}")
+
+    # un-geocode Utah, which has 10 locations
+    utah = list(table.rows_where('"state" = "UT"'))
+    assert len(utah) == 10
+    for row in utah:
+        table.update(row["id"], {"latitude": None, "longitude": None})
+
+    # re-geocode those 10 rows, with a --delay argument
+    # and time it
+    start = datetime.datetime.now()
+    result = runner.invoke(
+        cli,
+        [
+            "--location",
+            "{id}",
+            "--delay",
+            "1",
+            str(DB_PATH),
+            str(TABLE_NAME),
+            "test",
+            "-p",
+            str(DB_PATH),
+        ],
+    )
+    end = datetime.datetime.now()
+    diff = end - start
+
+    print(result.stdout)
+    assert 0 == result.exit_code
+    assert diff.total_seconds() >= len(utah) - 1  # delay is after, so one less
+
+
 def test_geocode_row(db, geocoder):
     table = db[TABLE_NAME]
     geo_table = db[GEO_TABLE]
@@ -118,7 +157,7 @@ def test_geocode_row(db, geocoder):
     # since it's a fake geocoder, we can just look things up by id
     # all we're testing here is the interface that glues everything together
     result = geo_table.get(row["id"])
-    location = geocode_row(geocoder, "{id}", row)
+    location = geocode_row(geocoder.geocode, "{id}", row)
 
     assert isinstance(location, Location)
     assert location.address == result["addr:full"]
@@ -151,9 +190,9 @@ def test_resume_table(db, geocoder):
     geocode_table(db, TABLE_NAME, geocoder, "{id}")
 
     # undo it for some results, to pretend we're resuming
-    texas = list(table.rows_where("'addr:state' = 'TX'"))
+    texas = list(table.rows_where('"state" = "TX"'))
     for row in texas:
-        table.update(["id"], {"latitude": None, "longitude": None})
+        table.update(row["id"], {"latitude": None, "longitude": None})
 
     count = geocode_table(db, TABLE_NAME, geocoder, "{id}")
 

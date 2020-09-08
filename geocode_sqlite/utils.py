@@ -3,6 +3,7 @@ This is the Python interface
 """
 import logging
 from geopy import geocoders
+from geopy.extra.rate_limiter import RateLimiter
 from sqlite_utils import Database
 
 log = logging.getLogger("geocode_sqlite")
@@ -14,6 +15,7 @@ def geocode_table(
     geocoder,
     query_template="{location}",
     *,
+    delay=0,
     latitude_column="latitude",
     longitude_column="longitude",
     force=False,
@@ -49,9 +51,14 @@ def geocode_table(
             f"{latitude_column} IS NULL OR {longitude_column} IS NULL"
         )
 
+    if delay:
+        geocode = RateLimiter(geocoder.geocode, min_delay_seconds=delay)
+    else:
+        geocode = geocoder.geocode
+
     count = 0
     for row in rows:
-        result = geocode_row(geocoder, query_template, row)
+        result = geocode_row(geocode, query_template, row)
         if result:
             pks = [row[pk] for pk in table.pks]
             table.update(
@@ -66,9 +73,9 @@ def geocode_table(
     return count
 
 
-def geocode_row(geocoder, query_template, row):
+def geocode_row(geocode, query_template, row):
     """
     Do the actual work of geocoding
     """
     query = query_template.format(**row)
-    return geocoder.geocode(query)
+    return geocode(query)

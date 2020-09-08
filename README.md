@@ -86,6 +86,6 @@ pytest
 
 ```
 
-Please remenber that this library is mainly glue code between other well-tested projects, specifically: click, geopy and sqlite-utils. Tests should focus on making sure those parts fit together correctly. We can assume the parts themselves already work.
+Please remember that this library is mainly glue code between other well-tested projects, specifically: click, geopy and sqlite-utils. Tests should focus on making sure those parts fit together correctly. We can assume the parts themselves already work.
 
 To that end, there is a test geocoder included: `geocode_sqlite.testing.DummyGeocoder`. That geocoder works with an included dataset of In-N-Out Burger locations provided by [AllThePlaces](https://www.alltheplaces.xyz/). It works like a normal GeoPy geocoder, except it will only return results for In-N-Out locations using the included database.

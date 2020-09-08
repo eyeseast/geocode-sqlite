@@ -15,14 +15,15 @@ from .utils import geocode_table
 )
 @click.argument("table", type=click.STRING)
 @click.option("-l", "--location", type=click.STRING, default="{location}")
+@click.option("-d", "--delay", type=click.FLOAT)
 @click.option("--latitude", type=click.STRING, default="latitude")
 @click.option("--longitude", type=click.STRING, default="longitude")
-def cli(database, table, location, latitude, longitude):
+def cli(database, table, location, delay, latitude, longitude):
     "Geocode rows from a SQLite table"
 
 
 @cli.resultcallback()
-def geocode(geocoder, database, table, location, latitude, longitude):
+def geocode(geocoder, database, table, location, delay, latitude, longitude):
     "Do the actual geocoding"
     click.echo(f"Geocoding table {table} using {geocoder.__class__.__name__}")
     if latitude != "latitude":
@@ -36,6 +37,7 @@ def geocode(geocoder, database, table, location, latitude, longitude):
         table,
         geocoder,
         query_template=location,
+        delay=delay,
         latitude_column=latitude,
         longitude_column=longitude,
     )
@@ -51,3 +53,10 @@ def use_tester(db_path):
 
     return DummyGeocoder(Database(db_path))
 
+
+@cli.command()
+@click.option("--user-agent", type=click.STRING)
+@click.option("--domain", type=click.STRING, default="nominatim.openstreetmap.org")
+def nominatum(user_agent, domain):
+    click.echo(f"Using Nominatum geocoder at {domain}")
+    return geocoders.Nominatim(user_agent=user_agent, domain=domain)

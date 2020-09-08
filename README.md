@@ -58,6 +58,17 @@ _Then_, we need to say what geocoder we're using, and pass in any options needed
 
 Under the hood, this package uses the excellent [geopy](https://geopy.readthedocs.io/en/latest/) library, which is stable and thoroughly road-tested. If you need help understanding a particular geocoder's options, consult [geopy's documentation](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders).
 
+### Supported Geocoders
+
+The CLI currently supports these geocoders:
+
+- `bing`
+- `googlev3`
+- `mapquest` (and `open-mapquest`)
+- `nominatum`
+
+More will be added soon.
+
 ## Python API
 
 The command line interface aims to support the most common options for each geocoder. For more find-grained control, use the Python API.

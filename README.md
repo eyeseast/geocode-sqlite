@@ -33,6 +33,7 @@ Now, geocode it using OpenStreetMap's Nominatum geocoder.
 ```sh
 geocode-sqlite
  --location="{address}, {city}, {state} {zip}" \
+ --delay=1 \
  data.db data \
  nominatum  \
  --user-agent="this-is-me"
@@ -44,7 +45,7 @@ This will connect to a database (`data.db`) and read all rows from the table `da
 have both a `latitude` and `longitude` column filled).
 
 You're also telling the geocoder how to extract a location query from a row of data, using Python's
-built-in string formatting.
+built-in string formatting, and setting a rate limit of one request per second.
 
 For each row where geocoding succeeds, `latitude` and `longitude` will be populated. If you hit an error, or a rate limit,
 run the same query and pick up where you left off.
@@ -56,6 +57,28 @@ The first concerns the data we're geocoding. We need to say where our database i
 _Then_, we need to say what geocoder we're using, and pass in any options needed to initalize it. This will be different for each geocoder we want to use.
 
 Under the hood, this package uses the excellent [geopy](https://geopy.readthedocs.io/en/latest/) library, which is stable and thoroughly road-tested. If you need help understanding a particular geocoder's options, consult [geopy's documentation](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders).
+
+## Python API
+
+The command line interface aims to support the most common options for each geocoder. For more find-grained control, use the Python API.
+
+As with the CLI, this assumes you already have a SQLite database and a table of location data.
+
+```python
+from geocode_sqlite import geocode_table
+from geopy.geocoders import Nominatum
+
+# create a geocoder instance, with some extra options
+nominatum = Nominatum(user_agent="this-is-me", domain="nominatum.local.dev", scheme="http")
+
+# assuming our database is in the same directory
+count = geocode_sqlite("data.db", "data", query_template="{address}, {city}, {state} {zip}")
+
+# when it's done
+print(f"Geocoded {count} rows")
+```
+
+Any [geopy geocoder](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders) can be used with the Python API.
 
 ## Development
 

@@ -15,3 +15,5 @@ dist/
 *.db
 *.db-shm
 *.sqlite
+
+.env

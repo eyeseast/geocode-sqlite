@@ -6,7 +6,7 @@ tests/%.db: tests/innout.geojson tests/innout.csv
 
 .PHONY: test
 test: tests/test.db
-	geocode-sqlite -l "{id}" $^ innout_test test -p $^
+	geocode-sqlite -l "{id}" -d 0 $^ innout_test test -p $^
 
 .PHONY: nominatum
 nominatum: tests/nominatum.db

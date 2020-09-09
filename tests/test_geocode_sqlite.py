@@ -62,7 +62,18 @@ def test_cli_geocode_table(db, geocoder):
 
     # run the cli with our test geocoder
     result = runner.invoke(
-        cli, ["-l", "{id}", str(DB_PATH), str(TABLE_NAME), "test", "-p", str(DB_PATH)]
+        cli,
+        [
+            "-l",
+            "{id}",
+            "-d",
+            "0",
+            str(DB_PATH),
+            str(TABLE_NAME),
+            "test",
+            "-p",
+            str(DB_PATH),
+        ],
     )
 
     print(result.stdout)
@@ -85,6 +96,8 @@ def test_custom_fieldnames(db, geocoder):
         [
             "--location",
             "{id}",
+            "-d",
+            "0",
             "--latitude",
             "lat",
             "--longitude",

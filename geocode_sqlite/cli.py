@@ -4,27 +4,31 @@ from geopy import geocoders
 from sqlite_utils import Database
 
 from .utils import geocode_table
+from .testing import DummyGeocoder
 
 
 def validate_database(ctx, param, value):
     """
     Handle cases where a user calls something like:
-        geocode-sqlite bing --help
+    geocode-sqlite bing --help
     """
-    subs = cli.list_commands(ctx)
+    subs = set(cli.list_commands(ctx))
     if value in subs:
         cmd = cli.get_command(ctx, value)
         ctx.info_name = cmd.name
         click.echo(cmd.get_help(ctx))
-        ctx.exit()
+        return ctx.exit()
+
+    print(value)
+    return value
 
 
 @click.group()
 @click.version_option()
 @click.argument(
     "database",
-    type=click.Path(exists=False, file_okay=True, dir_okay=False, allow_dash=False),
-    required=False,
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, allow_dash=False),
+    required=True,
     callback=validate_database,
 )
 @click.argument("table", type=click.STRING, required=False)
@@ -63,8 +67,6 @@ def geocode(geocoder, database, table, location, delay, latitude, longitude):
 def use_tester(db_path):
     "Only use this for testing"
     click.echo(f"Using test geocoder with database {db_path}")
-    from .testing import DummyGeocoder
-
     return DummyGeocoder(Database(db_path))
 
 

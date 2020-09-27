@@ -3,8 +3,8 @@ import click
 from geopy import geocoders
 from sqlite_utils import Database
 
-from .utils import geocode_table
-from .testing import DummyGeocoder
+from utils import geocode_table
+from testing import DummyGeocoder
 
 
 def validate_database(ctx, param, value):

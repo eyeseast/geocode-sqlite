@@ -15,11 +15,10 @@ def validate_database(ctx, param, value):
     subs = set(cli.list_commands(ctx))
     if value in subs:
         cmd = cli.get_command(ctx, value)
-        ctx.info_name = cmd.name
+        ctx.info_name = f"geocode-sqlite ... {cmd.name}"
         click.echo(cmd.get_help(ctx))
         return ctx.exit()
 
-    print(value)
     return value
 
 
@@ -27,11 +26,11 @@ def validate_database(ctx, param, value):
 @click.version_option()
 @click.argument(
     "database",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, allow_dash=False),
+    type=click.Path(exists=False, file_okay=True, dir_okay=False, allow_dash=False),
     required=True,
     callback=validate_database,
 )
-@click.argument("table", type=click.STRING, required=False)
+@click.argument("table", type=click.STRING, required=True)
 @click.option("-l", "--location", type=click.STRING, default="{location}")
 @click.option("-d", "--delay", type=click.FLOAT, default=1.0)
 @click.option("--latitude", type=click.STRING, default="latitude")
@@ -43,7 +42,7 @@ def cli(database, table, location, delay, latitude, longitude):
 @cli.resultcallback()
 def geocode(geocoder, database, table, location, delay, latitude, longitude):
     "Do the actual geocoding"
-    click.echo(f"Geocoding table {table} using {geocoder.__class__.__name__}")
+    click.echo(f"Geocoding table: {table}")
     if latitude != "latitude":
         click.echo(f"Using custom latitude field: {latitude}")
 

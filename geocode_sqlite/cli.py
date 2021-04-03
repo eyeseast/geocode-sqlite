@@ -4,7 +4,7 @@ from geopy import geocoders
 from geopy.extra.rate_limiter import RateLimiter
 from sqlite_utils import Database
 
-from .utils import geocode_table, geocode_list, select_ungeocoded
+from .utils import geocode_list, select_ungeocoded
 from .testing import DummyGeocoder
 
 

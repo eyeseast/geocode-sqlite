@@ -1,5 +1,6 @@
 import csv
 import datetime
+import inspect
 import json
 import pathlib
 import pytest
@@ -11,7 +12,7 @@ from sqlite_utils import Database
 
 from geocode_sqlite.cli import cli, use_tester
 from geocode_sqlite.testing import DummyGeocoder
-from geocode_sqlite.utils import geocode_row, geocode_table
+from geocode_sqlite.utils import geocode_row, geocode_table, geocode_list
 
 tests = pathlib.Path(__file__).parent
 DB_PATH = tests / "test.db"
@@ -210,3 +211,23 @@ def test_resume_table(db, geocoder):
     count = geocode_table(db, TABLE_NAME, geocoder, "{id}")
 
     assert count == len(texas)
+
+
+def test_geocode_list(db, geocoder):
+    table = db[TABLE_NAME]
+
+    utah = list(table.rows_where('"state" = "UT"'))
+    assert len(utah) == 10
+
+    gen = geocode_list(utah, geocoder.geocode, "{id}")
+
+    assert inspect.isgenerator(gen)
+
+    done = list(gen)
+
+    # geocode the whole table, to cheeck results
+    geocode_table(db, TABLE_NAME, geocoder, "{id}")
+
+    for row, success in done:
+        assert success
+        assert row == table.get(row["id"])

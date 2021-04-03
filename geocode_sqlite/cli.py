@@ -1,9 +1,10 @@
 import click
 
 from geopy import geocoders
+from geopy.extra.rate_limiter import RateLimiter
 from sqlite_utils import Database
 
-from .utils import geocode_table
+from .utils import geocode_table, geocode_list, select_ungeocoded
 from .testing import DummyGeocoder
 
 
@@ -64,7 +65,11 @@ def cli(ctx):
 def geocode(ctx, geocoder):
     "Do the actual geocoding"
     database, table, location, delay, latitude, longitude = extract_context(ctx)
-    click.echo(f"Geocoding table: {table}")
+
+    database = Database(database)
+    table = database[table]
+
+    click.echo(f"Geocoding table: {table.name}")
 
     if latitude != "latitude":
         click.echo(f"Using custom latitude field: {latitude}")
@@ -72,16 +77,37 @@ def geocode(ctx, geocoder):
     if longitude != "longitude":
         click.echo(f"Using custom longitude field: {longitude}")
 
-    count = geocode_table(
-        database,
-        table,
-        geocoder,
-        query_template=location,
-        delay=delay,
-        latitude_column=latitude,
-        longitude_column=longitude,
+    if latitude not in table.columns_dict:
+        click.echo(f"Adding column: {latitude}")
+        table.add_column(latitude, float)
+
+    if longitude not in table.columns_dict:
+        click.echo(f"Adding column: {longitude}")
+        table.add_column(longitude, float)
+
+    # always use a rate limiter, even if delay is zero
+    geocode = RateLimiter(geocoder.geocode, min_delay_seconds=delay)
+
+    rows, count = select_ungeocoded(
+        database, table, latitude_column=latitude, longitude_column=longitude
     )
-    click.echo("Geocoded {} rows".format(count))
+
+    done = 0
+
+    gen = geocode_list(
+        rows, geocode, location, latitude_column=latitude, longitude_column=longitude
+    )
+
+    with click.progressbar(gen, length=count, label=f"{count} rows") as bar:
+        for row, success in bar:
+            pks = [row[pk] for pk in table.pks]
+            if success:
+                table.update(pks, row)
+                done += 1
+            else:
+                click.echo(f"Error geocoding row: {pks}", err=True)
+
+    click.echo("Geocoded {} rows".format(done))
 
 
 @cli.command("test", hidden=True)

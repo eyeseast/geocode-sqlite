@@ -64,15 +64,15 @@ def test_cli_geocode_table(db, geocoder):
     result = runner.invoke(
         cli,
         [
-            "-l",
+            "test",  # geocoder subcommand
+            str(DB_PATH),  # db
+            str(TABLE_NAME),  # table
+            "--db-path",  # path, for test geocoder
+            str(DB_PATH),
+            "--location",  # location
             "{id}",
-            "-d",
+            "--delay",  # delay
             "0",
-            str(DB_PATH),
-            str(TABLE_NAME),
-            "test",
-            "-p",
-            str(DB_PATH),
         ],
     )
 
@@ -94,7 +94,12 @@ def test_custom_fieldnames(db, geocoder):
     result = runner.invoke(
         cli,
         [
-            "--location",
+            "test",
+            str(DB_PATH),
+            str(TABLE_NAME),
+            "-p",
+            str(DB_PATH),
+            "-l",
             "{id}",
             "-d",
             "0",
@@ -102,11 +107,6 @@ def test_custom_fieldnames(db, geocoder):
             "lat",
             "--longitude",
             "lng",
-            str(DB_PATH),
-            str(TABLE_NAME),
-            "test",
-            "-p",
-            str(DB_PATH),
         ],
     )
 
@@ -139,15 +139,15 @@ def test_rate_limiting(db, geocoder):
     result = runner.invoke(
         cli,
         [
+            "test",
+            str(DB_PATH),
+            str(TABLE_NAME),
+            "-p",
+            str(DB_PATH),
             "--location",
             "{id}",
             "--delay",
             "1",
-            str(DB_PATH),
-            str(TABLE_NAME),
-            "test",
-            "-p",
-            str(DB_PATH),
         ],
     )
     end = datetime.datetime.now()

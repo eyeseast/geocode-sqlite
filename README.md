@@ -105,8 +105,8 @@ To contribute to this tool, first checkout the code. Then create a new virtual e
 
 ```sh
 cd geocode-sqlite
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 ```
 
 Or if you are using `pipenv`:

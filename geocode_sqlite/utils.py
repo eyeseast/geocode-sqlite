@@ -23,7 +23,7 @@ def geocode_table(
     """
     Geocode rows in a given table.
 
-    You **must** specify a geocoder instance to use. 
+    You **must** specify a geocoder instance to use.
 
     By default, select all rows where `latitude` or `longitude` is null.
     Those fields can be configured (for example, to use `lat` and `long`).
@@ -73,9 +73,56 @@ def geocode_table(
     return count
 
 
+def geocode_list(
+    rows,
+    geocode,
+    query_template="{location}",
+    *,
+    latitude_column="latitude",
+    longitude_column="longitude",
+):
+    """
+    Geocode an arbitrary list of rows, returning a generator.
+    This does not query or save geocoded results into a table.
+    If geocoding succeeds, it will yield a two-tuple:
+     - the row with latitude and longitude columns set
+     - and True
+
+    If geocoding fails, it will yield the original row and False.
+    """
+    for row in rows:
+        result = geocode_row(geocode, query_template, row)
+        if result:
+            row[longitude_column] = result.longitude
+            row[latitude_column] = result.latitude
+
+        yield row, bool(result)
+
+
 def geocode_row(geocode, query_template, row):
     """
     Do the actual work of geocoding
     """
     query = query_template.format(**row)
     return geocode(query)
+
+
+def select_ungeocoded(
+    db, table, *, latitude_column="latitude", longitude_column="longitude", force=False
+):
+    if force:
+        return table.rows, table.count
+
+    count = db.execute(
+        f"""SELECT count(*) 
+        FROM {table.name} 
+        WHERE {latitude_column} IS NULL 
+        OR {longitude_column} IS NULL"""
+    ).fetchone()
+
+    if count:
+        count = count[0]
+
+    rows = table.rows_where(f"{latitude_column} IS NULL OR {longitude_column} IS NULL")
+
+    return rows, count

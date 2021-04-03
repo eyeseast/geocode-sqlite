@@ -14,7 +14,7 @@ def common_options(f):
     f = click.argument("table", type=click.STRING, required=True)(f)
     f = click.argument(
         "database",
-        type=click.Path(exists=False, file_okay=True, dir_okay=False, allow_dash=False),
+        type=click.Path(exists=True, file_okay=True, dir_okay=False, allow_dash=False),
         required=True,
     )(f)
 

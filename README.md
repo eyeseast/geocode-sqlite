@@ -31,30 +31,22 @@ sqlite-utils insert data.db data data.csv --csv
 Now, geocode it using OpenStreetMap's Nominatum geocoder.
 
 ```sh
-geocode-sqlite
+geocode-sqlite nominatum data.db data \
  --location="{address}, {city}, {state} {zip}" \
  --delay=1 \
- data.db data \
- nominatum  \
  --user-agent="this-is-me"
 ```
 
-In the command above, you're using Nominatum, which is free and only asks for a unique user agent.
+In the command above, you're using Nominatum, which is free and only asks for a unique user agent (`--user-agent`).
 
 This will connect to a database (`data.db`) and read all rows from the table `data` (skipping any that already
 have both a `latitude` and `longitude` column filled).
 
-You're also telling the geocoder how to extract a location query from a row of data, using Python's
-built-in string formatting, and setting a rate limit of one request per second.
+You're also telling the geocoder how to extract a location query (`--location`) from a row of data, using Python's
+built-in string formatting, and setting a rate limit (`--delay`) of one request per second.
 
 For each row where geocoding succeeds, `latitude` and `longitude` will be populated. If you hit an error, or a rate limit,
 run the same query and pick up where you left off.
-
-**Note the order of options**: There are two sets of options we need to pass.
-
-The first concerns the data we're geocoding. We need to say where our database is and what table we're using, and optionally, how to extract a location query.
-
-_Then_, we need to say what geocoder we're using, and pass in any options needed to initalize it. This will be different for each geocoder we want to use.
 
 Under the hood, this package uses the excellent [geopy](https://geopy.readthedocs.io/en/latest/) library, which is stable and thoroughly road-tested. If you need help understanding a particular geocoder's options, consult [geopy's documentation](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders).
 
@@ -68,6 +60,22 @@ The CLI currently supports these geocoders:
 - `nominatum`
 
 More will be added soon.
+
+### Common arguments and options
+
+Each geocoder needs to know where to find the data it's working with. These are the first two arguments:
+
+- database: a path to a SQLite file, which must already exist
+- table: the name of a table, in that database, which exists and has data to geocode
+
+From there, we have a set of options passed to every geocoder:
+
+- location: a [string format](https://docs.python.org/3/library/stdtypes.html#str.format) that will be expanded with each row to build a full query, to be geocoded
+- delay: a delay between each call (some services require this)
+- latitude: latitude column name
+- longitude: longitude column name
+
+Each geocoder takes additional, specific arguments beyond these, such as API keys. Again, [geopy's documentation](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders) is an excellent resource.
 
 ## Python API
 

@@ -98,6 +98,8 @@ def geocode(ctx, geocoder):
         rows, geocode, location, latitude_column=latitude, longitude_column=longitude
     )
 
+    errors = []
+
     with click.progressbar(gen, length=count, label=f"{count} rows") as bar:
         for row, success in bar:
             pks = [row[pk] for pk in table.pks]
@@ -105,9 +107,14 @@ def geocode(ctx, geocoder):
                 table.update(pks, row)
                 done += 1
             else:
-                click.echo(f"Error geocoding row: {pks}", err=True)
+                errors.append(pks)
 
     click.echo("Geocoded {} rows".format(done))
+    if errors:
+        click.echo("The following rows failed to geocode:")
+        for pk in errors:
+            row = table.get(pk)
+            click.echo(f"{pk}: {location.format(row)}")
 
 
 @cli.command("test", hidden=True)

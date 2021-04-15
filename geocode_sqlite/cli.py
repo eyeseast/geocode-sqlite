@@ -85,6 +85,10 @@ def geocode(ctx, geocoder):
         click.echo(f"Adding column: {longitude}")
         table.add_column(longitude, float)
 
+    if "geocoder" not in table.columns_dict:
+        click.echo("Adding geocoder column")
+        table.add_column("geocoder", str)
+
     # always use a rate limiter, even if delay is zero
     geocode = RateLimiter(geocoder.geocode, min_delay_seconds=delay)
 
@@ -93,12 +97,11 @@ def geocode(ctx, geocoder):
     )
 
     done = 0
+    errors = []
 
     gen = geocode_list(
         rows, geocode, location, latitude_column=latitude, longitude_column=longitude
     )
-
-    errors = []
 
     with click.progressbar(gen, length=count, label=f"{count} rows") as bar:
         for row, success in bar:

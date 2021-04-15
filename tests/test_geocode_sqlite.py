@@ -231,3 +231,14 @@ def test_geocode_list(db, geocoder):
     for row, success in done:
         assert success
         assert row == table.get(row["id"])
+
+
+def test_label_results(db, geocoder):
+    table = db[TABLE_NAME]
+
+    # geocode it once
+    geocode_table(db, TABLE_NAME, geocoder, "{id}")
+
+    for row in table.rows:
+        assert "geocoder" in row
+        assert row["geocoder"] == geocoder.__class__.__name__

@@ -2,7 +2,6 @@
 This is the Python interface
 """
 import logging
-from geopy import geocoders
 from geopy.extra.rate_limiter import RateLimiter
 from sqlite_utils import Database
 
@@ -39,31 +38,41 @@ def geocode_table(
     table = db[table_name]
 
     if latitude_column not in table.columns_dict:
+        log.info(f"Adding latitude column: {latitude_column}")
         table.add_column(latitude_column, float)
 
     if longitude_column not in table.columns_dict:
+        log.info(f"Adding longitude column: {longitude_column}")
         table.add_column(longitude_column, float)
 
-    if force:
-        rows = table.rows
-    else:
-        rows = table.rows_where(
-            f"{latitude_column} IS NULL OR {longitude_column} IS NULL"
-        )
+    if "geocoder" not in table.columns_dict:
+        log.info("Adding geocoder column")
+        table.add_column("geocoder", str)
 
-    if delay:
-        geocode = RateLimiter(geocoder.geocode, min_delay_seconds=delay)
-    else:
-        geocode = geocoder.geocode
+    rows, todo = select_ungeocoded(
+        db,
+        table,
+        latitude_column=latitude_column,
+        longitude_column=longitude_column,
+        force=force,
+    )
+
+    # always use a rate limiter, even with no delay
+    geocode = RateLimiter(geocoder.geocode, min_delay_seconds=delay)
 
     count = 0
+    log.info(f"Geocoding {todo} rows from {table.name}")
     for row in rows:
         result = geocode_row(geocode, query_template, row)
         if result:
             pks = [row[pk] for pk in table.pks]
             table.update(
                 pks,
-                {latitude_column: result.latitude, longitude_column: result.longitude},
+                {
+                    latitude_column: result.latitude,
+                    longitude_column: result.longitude,
+                    "geocoder": geocoder.__class__.__name__,
+                },
             )
             count += 1
 
@@ -95,6 +104,7 @@ def geocode_list(
         if result:
             row[longitude_column] = result.longitude
             row[latitude_column] = result.latitude
+            row["geocoder"] = get_geocoder_class(geocode)
 
         yield row, bool(result)
 
@@ -126,3 +136,13 @@ def select_ungeocoded(
     rows = table.rows_where(f"{latitude_column} IS NULL OR {longitude_column} IS NULL")
 
     return rows, count
+
+
+def get_geocoder_class(geocode):
+    "Walk back up to the original geocoder class"
+
+    if isinstance(geocode, RateLimiter):
+        return geocode.func.__self__.__class__.__name__
+
+    # unwrapped function
+    return geocode.__self__.__class__.__name__

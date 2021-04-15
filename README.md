@@ -91,7 +91,7 @@ from geopy.geocoders import Nominatum
 nominatum = Nominatum(user_agent="this-is-me", domain="nominatum.local.dev", scheme="http")
 
 # assuming our database is in the same directory
-count = geocode_sqlite("data.db", "data", query_template="{address}, {city}, {state} {zip}")
+count = geocode_table("data.db", "data", query_template="{address}, {city}, {state} {zip}")
 
 # when it's done
 print(f"Geocoded {count} rows")

@@ -190,3 +190,15 @@ def open_mapquest(ctx, database, table, location, delay, latitude, longitude, ap
     click.echo("Using MapQuest geocoder")
     fill_context(ctx, database, table, location, delay, latitude, longitude)
     return geocoders.MapQuest(api_key=api_key)
+
+
+@cli.command("mapbox")
+@common_options
+@click.option(
+    "-k", "--api-key", type=click.STRING, required=True, envvar="MAPBOX_API_KEY"
+)
+def mapbox(ctx, database, table, location, delay, latitude, longitude, api_key):
+    "Mapbox"
+    click.echo("Using Mapbox geocoder")
+    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    return geocoders.MapBox(api_key=api_key)

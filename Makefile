@@ -34,6 +34,17 @@ bing: tests/bing.db
 		--delay 1 \
 		--api-key "$(BING_API_KEY)"
 
+.PHONY: mapbox
+mapbox: tests/mapbox.db
+	geocode-sqlite mapbox $^ innout_test \
+		--location "{full}, {city}, {state} {postcode}" \
+		--delay 1 \
+		--api-key "$(MAPBOX_API_KEY)"
+
+
+.PHONY: run
+run:
+	datasette serve tests/*.db
 
 .PHONY: clean
 clean:

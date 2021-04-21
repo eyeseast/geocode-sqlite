@@ -25,5 +25,7 @@ jobs:
         run: |
           pip install -e '.[test]'
       - name: Run tests
+        env:
+          MAPBOX_API_KEY: ${{ secrets.MAPBOX_API_KEY }}
         run: |
           pytest

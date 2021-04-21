@@ -159,6 +159,33 @@ def test_rate_limiting(db, geocoder):
     assert diff.total_seconds() >= len(utah) - 1  # delay is after, so one less
 
 
+def test_pass_kwargs(db, geocoder):
+
+    # geocode it once
+    geocode_table(db, TABLE_NAME, geocoder, "{id}")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "mapbox",
+            str(DB_PATH),
+            TABLE_NAME,  # already geocoded, so no calls
+            "--location",
+            "{id}",
+            "--bbox",
+            "-71.553765",
+            "42.163302",
+            "-70.564995",
+            "42.533755",
+            "--proximity",
+            "-71.0",
+            "42.3",
+        ],
+    )
+    assert 0 == result.exit_code
+
+
 def test_geocode_row(db, geocoder):
     table = db[TABLE_NAME]
     geo_table = db[GEO_TABLE]

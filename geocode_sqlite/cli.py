@@ -55,7 +55,7 @@ def common_options(f):
     return f
 
 
-def fill_context(ctx, database, table, location, delay, latitude, longitude):
+def fill_context(ctx, database, table, location, delay, latitude, longitude, **kwargs):
     "Add common options to context"
     ctx.obj.update(
         database=database,
@@ -64,6 +64,7 @@ def fill_context(ctx, database, table, location, delay, latitude, longitude):
         delay=delay,
         latitude=latitude,
         longitude=longitude,
+        kwargs=kwargs,
     )
 
 
@@ -76,6 +77,7 @@ def extract_context(ctx):
         ctx.obj["delay"],
         ctx.obj["latitude"],
         ctx.obj["longitude"],
+        ctx.obj.get("kwargs", {}),
     )
 
 
@@ -91,7 +93,7 @@ def cli(ctx):
 @click.pass_context
 def geocode(ctx, geocoder):
     "Do the actual geocoding"
-    database, table, location, delay, latitude, longitude = extract_context(ctx)
+    database, table, location, delay, latitude, longitude, kwargs = extract_context(ctx)
 
     database = Database(database)
     table = database[table]
@@ -120,14 +122,22 @@ def geocode(ctx, geocoder):
     geocode = RateLimiter(geocoder.geocode, min_delay_seconds=delay)
 
     rows, count = select_ungeocoded(
-        database, table, latitude_column=latitude, longitude_column=longitude
+        database,
+        table,
+        latitude_column=latitude,
+        longitude_column=longitude,
     )
 
     done = 0
     errors = []
 
     gen = geocode_list(
-        rows, geocode, location, latitude_column=latitude, longitude_column=longitude
+        rows,
+        geocode,
+        location,
+        latitude_column=latitude,
+        longitude_column=longitude,
+        **kwargs,
     )
 
     with click.progressbar(gen, length=count, label=f"{count} rows") as bar:
@@ -160,7 +170,12 @@ def use_tester(ctx, database, table, location, delay, latitude, longitude, db_pa
 @cli.command("bing")
 @common_options
 @click.option(
-    "-k", "--api-key", type=click.STRING, required=True, envvar="BING_API_KEY"
+    "-k",
+    "--api-key",
+    type=click.STRING,
+    required=True,
+    envvar="BING_API_KEY",
+    help="Bing Maps API key",
 )
 def bing(ctx, database, table, location, delay, latitude, longitude, api_key):
     "Bing"
@@ -170,15 +185,30 @@ def bing(ctx, database, table, location, delay, latitude, longitude, api_key):
 
 
 @cli.command("googlev3")
-@common_options
 @click.option(
-    "-k", "--api-key", type=click.STRING, required=True, envvar="GOOGLE_API_KEY"
+    "-k",
+    "--api-key",
+    type=click.STRING,
+    required=True,
+    envvar="GOOGLE_API_KEY",
+    help="Google Maps API key",
 )
-@click.option("--domain", type=click.STRING, default="maps.googleapis.com")
-def google(ctx, database, table, location, delay, latitude, longitude, api_key, domain):
+@click.option(
+    "--domain", type=click.STRING, default="maps.googleapis.com", show_default=True
+)
+@click.option(
+    "--bbox",
+    type=click.FLOAT,
+    nargs=4,
+    help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
+)
+@common_options
+def google(
+    ctx, database, table, location, delay, latitude, longitude, api_key, domain, bbox
+):
     "Google V3"
     click.echo(f"Using GoogleV3 geocoder at domain {domain}")
-    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    fill_context(ctx, database, table, location, delay, latitude, longitude, bbox=bbox)
     return geocoders.GoogleV3(api_key=api_key, domain=domain)
 
 
@@ -191,11 +221,17 @@ def google(ctx, database, table, location, delay, latitude, longitude, api_key, 
     envvar="MAPQUEST_API_KEY",
     help="MapQuest API key",
 )
+@click.option(
+    "--bbox",
+    type=click.FLOAT,
+    nargs=4,
+    help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
+)
 @common_options
-def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key):
+def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key, bbox):
     "Mapquest"
     click.echo("Using MapQuest geocoder")
-    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    fill_context(ctx, database, table, location, delay, latitude, longitude, bbox=bbox)
     return geocoders.MapQuest(api_key=api_key)
 
 
@@ -247,9 +283,33 @@ def open_mapquest(ctx, database, table, location, delay, latitude, longitude, ap
     envvar="MAPBOX_API_KEY",
     help="MapBox access token",
 )
+@click.option(
+    "--bbox",
+    type=click.FLOAT,
+    nargs=4,
+    help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
+)
+@click.option(
+    "--proximity",
+    type=click.FLOAT,
+    nargs=2,
+    help="Favor results closer to a provided location. Example: -71.0 42.3",
+)
 @common_options
-def mapbox(ctx, database, table, location, delay, latitude, longitude, api_key):
+def mapbox(
+    ctx, database, table, location, delay, latitude, longitude, api_key, bbox, proximity
+):
     "Mapbox"
     click.echo("Using Mapbox geocoder")
-    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    fill_context(
+        ctx,
+        database,
+        table,
+        location,
+        delay,
+        latitude,
+        longitude,
+        bbox=bbox,
+        proximity=proximity,
+    )
     return geocoders.MapBox(api_key=api_key)

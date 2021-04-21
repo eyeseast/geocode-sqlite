@@ -18,6 +18,7 @@ def geocode_table(
     latitude_column="latitude",
     longitude_column="longitude",
     force=False,
+    **kwargs,
 ):
     """
     Geocode rows in a given table.
@@ -63,7 +64,7 @@ def geocode_table(
     count = 0
     log.info(f"Geocoding {todo} rows from {table.name}")
     for row in rows:
-        result = geocode_row(geocode, query_template, row)
+        result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
             pks = [row[pk] for pk in table.pks]
             table.update(
@@ -89,6 +90,7 @@ def geocode_list(
     *,
     latitude_column="latitude",
     longitude_column="longitude",
+    **kwargs,
 ):
     """
     Geocode an arbitrary list of rows, returning a generator.
@@ -100,7 +102,7 @@ def geocode_list(
     If geocoding fails, it will yield the original row and False.
     """
     for row in rows:
-        result = geocode_row(geocode, query_template, row)
+        result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
             row[longitude_column] = result.longitude
             row[latitude_column] = result.latitude
@@ -109,12 +111,12 @@ def geocode_list(
         yield row, bool(result)
 
 
-def geocode_row(geocode, query_template, row):
+def geocode_row(geocode, query_template, row, **kwargs):
     """
     Do the actual work of geocoding
     """
     query = query_template.format(**row)
-    return geocode(query)
+    return geocode(query, **kwargs)
 
 
 def select_ungeocoded(

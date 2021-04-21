@@ -87,7 +87,7 @@ def bbox_option(f):
         type=click.FLOAT,
         nargs=4,
         callback=validate_bbox,
-        help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
+        help="Bias results within a bounding box. Must be four numbers. Example: 33.0 -119.7 34.6 -115.8",
     )
     return option(f)
 
@@ -298,7 +298,7 @@ def open_mapquest(ctx, database, table, location, delay, latitude, longitude, ap
     "--proximity",
     type=click.FLOAT,
     nargs=2,
-    help="Favor results closer to a provided location. Example: -71.0 42.3",
+    help="Favor results closer to a provided location. Example: 33.8 -117.8",
 )
 @common_options
 def mapbox(

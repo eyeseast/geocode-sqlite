@@ -93,6 +93,8 @@ def bbox_option(f):
 
 
 def validate_bbox(ctx, param, value):
+    if len(value) < 4:
+        return None
     return format_bbox(*value)
 
 

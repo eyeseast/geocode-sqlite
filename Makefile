@@ -25,7 +25,8 @@ mapquest: tests/mapquest.db
 google: tests/google.db
 	geocode-sqlite googlev3 $^ innout_test \
 		--location "{full}, {city}, {state} {postcode}" \
-		--api-key "$(GOOGLE_API_KEY)"
+		--api-key "$(GOOGLE_API_KEY)" \
+		--bbox 33.030551 -119.787326 34.695341 -115.832248
 
 .PHONY: bing
 bing: tests/bing.db

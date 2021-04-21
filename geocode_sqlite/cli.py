@@ -4,7 +4,7 @@ from geopy import geocoders
 from geopy.extra.rate_limiter import RateLimiter
 from sqlite_utils import Database
 
-from .utils import geocode_list, select_ungeocoded
+from .utils import geocode_list, select_ungeocoded, format_bbox
 from .testing import DummyGeocoder
 
 
@@ -81,6 +81,21 @@ def extract_context(ctx):
     )
 
 
+def bbox_option(f):
+    option = click.option(
+        "--bbox",
+        type=click.FLOAT,
+        nargs=4,
+        callback=validate_bbox,
+        help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
+    )
+    return option(f)
+
+
+def validate_bbox(ctx, param, value):
+    return format_bbox(*value)
+
+
 @click.group()
 @click.version_option()
 @click.pass_context
@@ -97,6 +112,7 @@ def geocode(ctx, geocoder):
 
     database = Database(database)
     table = database[table]
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
     click.echo(f"Geocoding table: {table.name}")
 
@@ -196,19 +212,16 @@ def bing(ctx, database, table, location, delay, latitude, longitude, api_key):
 @click.option(
     "--domain", type=click.STRING, default="maps.googleapis.com", show_default=True
 )
-@click.option(
-    "--bbox",
-    type=click.FLOAT,
-    nargs=4,
-    help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
-)
+@bbox_option
 @common_options
 def google(
     ctx, database, table, location, delay, latitude, longitude, api_key, domain, bbox
 ):
     "Google V3"
     click.echo(f"Using GoogleV3 geocoder at domain {domain}")
-    fill_context(ctx, database, table, location, delay, latitude, longitude, bbox=bbox)
+    fill_context(
+        ctx, database, table, location, delay, latitude, longitude, bounds=bbox
+    )
     return geocoders.GoogleV3(api_key=api_key, domain=domain)
 
 
@@ -221,17 +234,14 @@ def google(
     envvar="MAPQUEST_API_KEY",
     help="MapQuest API key",
 )
-@click.option(
-    "--bbox",
-    type=click.FLOAT,
-    nargs=4,
-    help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
-)
+@bbox_option
 @common_options
 def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key, bbox):
     "Mapquest"
     click.echo("Using MapQuest geocoder")
-    fill_context(ctx, database, table, location, delay, latitude, longitude, bbox=bbox)
+    fill_context(
+        ctx, database, table, location, delay, latitude, longitude, bounds=bbox
+    )
     return geocoders.MapQuest(api_key=api_key)
 
 
@@ -283,12 +293,7 @@ def open_mapquest(ctx, database, table, location, delay, latitude, longitude, ap
     envvar="MAPBOX_API_KEY",
     help="MapBox access token",
 )
-@click.option(
-    "--bbox",
-    type=click.FLOAT,
-    nargs=4,
-    help="Bias results within a bounding box. Must be four numbers. Example: -71.5 42.1 -70.5 42.5",
-)
+@bbox_option
 @click.option(
     "--proximity",
     type=click.FLOAT,

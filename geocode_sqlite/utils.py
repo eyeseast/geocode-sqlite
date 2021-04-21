@@ -148,3 +148,8 @@ def get_geocoder_class(geocode):
 
     # unwrapped function
     return geocode.__self__.__class__.__name__
+
+
+def format_bbox(*coords):
+    coords = coords[:4]  # get exactly four
+    return (coords[0], coords[1]), (coords[2], coords[3])

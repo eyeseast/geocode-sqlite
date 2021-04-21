@@ -9,21 +9,48 @@ from .testing import DummyGeocoder
 
 
 def common_options(f):
-    f = click.pass_context(f)
-
-    # arguments have to be added in reverse order
-    f = click.argument("table", type=click.STRING, required=True)(f)
-    f = click.argument(
-        "database",
-        type=click.Path(exists=True, file_okay=True, dir_okay=False, allow_dash=False),
-        required=True,
-    )(f)
-
-    # options
-    f = click.option("-l", "--location", type=click.STRING, default="{location}")(f)
-    f = click.option("-d", "--delay", type=click.FLOAT, default=1.0)(f)
-    f = click.option("--latitude", type=click.STRING, default="latitude")(f)
-    f = click.option("--longitude", type=click.STRING, default="longitude")(f)
+    for decorator in reversed(
+        [
+            # arguments
+            click.argument(
+                "database",
+                type=click.Path(
+                    exists=True, file_okay=True, dir_okay=False, allow_dash=False
+                ),
+                required=True,
+            ),
+            click.argument("table", type=click.STRING, required=True),
+            # options
+            click.option(
+                "-l",
+                "--location",
+                type=click.STRING,
+                default="{location}",
+                help="Location query format. See docs for examples.",
+            ),
+            click.option(
+                "-d",
+                "--delay",
+                type=click.FLOAT,
+                default=1.0,
+                help="Delay between geocoding calls, in seconds.",
+            ),
+            click.option(
+                "--latitude",
+                type=click.STRING,
+                default="latitude",
+                help="Field name for latitude",
+            ),
+            click.option(
+                "--longitude",
+                type=click.STRING,
+                default="longitude",
+                help="Field name for longitude",
+            ),
+            click.pass_context,
+        ]
+    ):
+        f = decorator(f)
 
     return f
 
@@ -156,10 +183,15 @@ def google(ctx, database, table, location, delay, latitude, longitude, api_key, 
 
 
 @cli.command("mapquest")
-@common_options
 @click.option(
-    "-k", "--api-key", type=click.STRING, required=True, envvar="MAPQUEST_API_KEY"
+    "-k",
+    "--api-key",
+    type=click.STRING,
+    required=True,
+    envvar="MAPQUEST_API_KEY",
+    help="MapQuest API key",
 )
+@common_options
 def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key):
     "Mapquest"
     click.echo("Using MapQuest geocoder")
@@ -168,9 +200,18 @@ def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key
 
 
 @cli.command()
+@click.option(
+    "--user-agent",
+    type=click.STRING,
+    help="Unique user-agent string to identify requests",
+)
+@click.option(
+    "--domain",
+    type=click.STRING,
+    default="nominatim.openstreetmap.org",
+    show_default=True,
+)
 @common_options
-@click.option("--user-agent", type=click.STRING)
-@click.option("--domain", type=click.STRING, default="nominatim.openstreetmap.org")
 def nominatum(
     ctx, database, table, location, delay, latitude, longitude, user_agent, domain
 ):
@@ -181,10 +222,15 @@ def nominatum(
 
 
 @cli.command("open-mapquest")
-@common_options
 @click.option(
-    "-k", "--api-key", type=click.STRING, required=True, envvar="MAPQUEST_API_KEY"
+    "-k",
+    "--api-key",
+    type=click.STRING,
+    required=True,
+    envvar="MAPQUEST_API_KEY",
+    help="MapQuest API key",
 )
+@common_options
 def open_mapquest(ctx, database, table, location, delay, latitude, longitude, api_key):
     "Open Mapquest"
     click.echo("Using MapQuest geocoder")
@@ -193,10 +239,15 @@ def open_mapquest(ctx, database, table, location, delay, latitude, longitude, ap
 
 
 @cli.command("mapbox")
-@common_options
 @click.option(
-    "-k", "--api-key", type=click.STRING, required=True, envvar="MAPBOX_API_KEY"
+    "-k",
+    "--api-key",
+    type=click.STRING,
+    required=True,
+    envvar="MAPBOX_API_KEY",
+    help="MapBox access token",
 )
+@common_options
 def mapbox(ctx, database, table, location, delay, latitude, longitude, api_key):
     "Mapbox"
     click.echo("Using Mapbox geocoder")

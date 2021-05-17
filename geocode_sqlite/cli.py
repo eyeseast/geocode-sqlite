@@ -260,11 +260,11 @@ def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key
     show_default=True,
 )
 @common_options
-def nominatum(
+def nominatim(
     ctx, database, table, location, delay, latitude, longitude, user_agent, domain
 ):
-    "Nominatum (OSM)"
-    click.echo(f"Using Nominatum geocoder at {domain}")
+    "Nominatim (OSM)"
+    click.echo(f"Using Nominatim geocoder at {domain}")
     fill_context(ctx, database, table, location, delay, latitude, longitude)
     return geocoders.Nominatim(user_agent=user_agent, domain=domain)
 

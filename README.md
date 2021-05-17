@@ -28,16 +28,16 @@ First, create a SQLite database and insert rows from that spreadsheet using `sql
 sqlite-utils insert data.db data data.csv --csv
 ```
 
-Now, geocode it using OpenStreetMap's Nominatum geocoder.
+Now, geocode it using OpenStreetMap's Nominatim geocoder.
 
 ```sh
-geocode-sqlite nominatum data.db data \
+geocode-sqlite nominatim data.db data \
  --location="{address}, {city}, {state} {zip}" \
  --delay=1 \
  --user-agent="this-is-me"
 ```
 
-In the command above, you're using Nominatum, which is free and only asks for a unique user agent (`--user-agent`).
+In the command above, you're using Nominatim, which is free and only asks for a unique user agent (`--user-agent`).
 
 This will connect to a database (`data.db`) and read all rows from the table `data` (skipping any that already
 have both a `latitude` and `longitude` column filled).
@@ -57,7 +57,7 @@ The CLI currently supports these geocoders:
 - `bing`
 - `googlev3`
 - `mapquest` (and `open-mapquest`)
-- `nominatum`
+- `nominatim`
 
 More will be added soon.
 
@@ -85,10 +85,10 @@ As with the CLI, this assumes you already have a SQLite database and a table of 
 
 ```python
 from geocode_sqlite import geocode_table
-from geopy.geocoders import Nominatum
+from geopy.geocoders import Nominatim
 
 # create a geocoder instance, with some extra options
-nominatum = Nominatum(user_agent="this-is-me", domain="nominatum.local.dev", scheme="http")
+nominatim = Nominatim(user_agent="this-is-me", domain="nominatim.local.dev", scheme="http")
 
 # assuming our database is in the same directory
 count = geocode_table("data.db", "data", query_template="{address}, {city}, {state} {zip}")

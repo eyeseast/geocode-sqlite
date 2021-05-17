@@ -8,9 +8,9 @@ tests/%.db: tests/innout.geojson tests/innout.csv
 test: tests/test.db
 	geocode-sqlite test tests/test.db innout_test -p tests/test.db -l "{id}" -d .1
 
-.PHONY: nominatum
-nominatum: tests/nominatum.db
-	geocode-sqlite nominatum $^ innout_test \
+.PHONY: nominatim
+nominatim: tests/nominatim.db
+	geocode-sqlite nominatim $^ innout_test \
 		--location "{full}, {city}, {state} {postcode}" \
 		--delay 1 \
 		--user-agent "geocode-sqlite"

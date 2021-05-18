@@ -48,6 +48,8 @@ built-in string formatting, and setting a rate limit (`--delay`) of one request 
 For each row where geocoding succeeds, `latitude` and `longitude` will be populated. If you hit an error, or a rate limit,
 run the same query and pick up where you left off.
 
+The resulting table layout can be visualized with [datasette-cluster-map](https://datasette.io/plugins/datasette-cluster-map).
+
 Under the hood, this package uses the excellent [geopy](https://geopy.readthedocs.io/en/latest/) library, which is stable and thoroughly road-tested. If you need help understanding a particular geocoder's options, consult [geopy's documentation](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders).
 
 ### Supported Geocoders
@@ -58,6 +60,7 @@ The CLI currently supports these geocoders:
 - `googlev3`
 - `mapquest` (and `open-mapquest`)
 - `nominatim`
+- `mapbox`
 
 More will be added soon.
 

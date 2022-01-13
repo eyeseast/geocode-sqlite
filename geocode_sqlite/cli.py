@@ -4,7 +4,13 @@ from geopy import geocoders
 from geopy.extra.rate_limiter import RateLimiter
 from sqlite_utils import Database
 
-from .utils import geocode_list, select_ungeocoded, format_bbox
+from .utils import (
+    geocode_list,
+    select_ungeocoded,
+    format_bbox,
+    GEOMETRY_COLUMN,
+    GEOCODER_COLUMN,
+)
 from .testing import DummyGeocoder
 
 
@@ -47,6 +53,14 @@ def common_options(f):
                 default="longitude",
                 help="Field name for longitude",
             ),
+            click.option(
+                "--geojson",
+                type=click.BOOL,
+                is_flag=True,
+                default=False,
+                help="""Store results as GeoJSON. 
+Using this will add a geometry column instead of latitude and longitude columns.""",
+            ),
             click.pass_context,
         ]
     ):
@@ -55,7 +69,9 @@ def common_options(f):
     return f
 
 
-def fill_context(ctx, database, table, location, delay, latitude, longitude, **kwargs):
+def fill_context(
+    ctx, database, table, location, delay, latitude, longitude, geojson, **kwargs
+):
     "Add common options to context"
     ctx.obj.update(
         database=database,
@@ -64,6 +80,7 @@ def fill_context(ctx, database, table, location, delay, latitude, longitude, **k
         delay=delay,
         latitude=latitude,
         longitude=longitude,
+        geojson=geojson,
         kwargs=kwargs,
     )
 
@@ -77,6 +94,7 @@ def extract_context(ctx):
         ctx.obj["delay"],
         ctx.obj["latitude"],
         ctx.obj["longitude"],
+        ctx.obj["geojson"],
         ctx.obj.get("kwargs", {}),
     )
 
@@ -110,10 +128,20 @@ def cli(ctx):
 @click.pass_context
 def geocode(ctx, geocoder):
     "Do the actual geocoding"
-    database, table, location, delay, latitude, longitude, kwargs = extract_context(ctx)
+    (
+        database,
+        table,
+        location,
+        delay,
+        latitude,
+        longitude,
+        geojson,
+        kwargs,
+    ) = extract_context(ctx)
 
     database = Database(database)
     table = database[table]
+    columns = table.columns_dict
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
     click.echo(f"Geocoding table: {table.name}")
@@ -124,17 +152,21 @@ def geocode(ctx, geocoder):
     if longitude != "longitude":
         click.echo(f"Using custom longitude field: {longitude}")
 
-    if latitude not in table.columns_dict:
+    if not geojson and latitude not in columns:
         click.echo(f"Adding column: {latitude}")
         table.add_column(latitude, float)
 
-    if longitude not in table.columns_dict:
+    if not geojson and longitude not in columns:
         click.echo(f"Adding column: {longitude}")
         table.add_column(longitude, float)
 
-    if "geocoder" not in table.columns_dict:
+    if geojson and GEOMETRY_COLUMN not in columns:
+        click.echo("Adding geometry column")
+        table.add_column(GEOMETRY_COLUMN, str)
+
+    if GEOCODER_COLUMN not in table.columns_dict:
         click.echo("Adding geocoder column")
-        table.add_column("geocoder", str)
+        table.add_column(GEOCODER_COLUMN, str)
 
     # always use a rate limiter, even if delay is zero
     geocode = RateLimiter(geocoder.geocode, min_delay_seconds=delay)
@@ -144,6 +176,7 @@ def geocode(ctx, geocoder):
         table,
         latitude_column=latitude,
         longitude_column=longitude,
+        geojson=geojson,
     )
 
     done = 0
@@ -155,6 +188,7 @@ def geocode(ctx, geocoder):
         location,
         latitude_column=latitude,
         longitude_column=longitude,
+        geojson=geojson,
         **kwargs,
     )
 
@@ -178,10 +212,12 @@ def geocode(ctx, geocoder):
 @cli.command("test", hidden=True)
 @common_options
 @click.option("-p", "--db-path", type=click.Path(exists=True))
-def use_tester(ctx, database, table, location, delay, latitude, longitude, db_path):
+def use_tester(
+    ctx, database, table, location, delay, latitude, longitude, geojson, db_path
+):
     "Only use this for testing"
     click.echo(f"Using test geocoder with database {db_path}")
-    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    fill_context(ctx, database, table, location, delay, latitude, longitude, geojson)
     return DummyGeocoder(Database(db_path))
 
 
@@ -195,10 +231,10 @@ def use_tester(ctx, database, table, location, delay, latitude, longitude, db_pa
     envvar="BING_API_KEY",
     help="Bing Maps API key",
 )
-def bing(ctx, database, table, location, delay, latitude, longitude, api_key):
+def bing(ctx, database, table, location, delay, latitude, longitude, geojson, api_key):
     "Bing"
     click.echo("Using Bing geocoder")
-    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    fill_context(ctx, database, table, location, delay, latitude, longitude, geojson)
     return geocoders.Bing(api_key=api_key)
 
 
@@ -217,12 +253,22 @@ def bing(ctx, database, table, location, delay, latitude, longitude, api_key):
 @bbox_option
 @common_options
 def google(
-    ctx, database, table, location, delay, latitude, longitude, api_key, domain, bbox
+    ctx,
+    database,
+    table,
+    location,
+    delay,
+    latitude,
+    longitude,
+    geojson,
+    api_key,
+    domain,
+    bbox,
 ):
     "Google V3"
     click.echo(f"Using GoogleV3 geocoder at domain {domain}")
     fill_context(
-        ctx, database, table, location, delay, latitude, longitude, bounds=bbox
+        ctx, database, table, location, delay, latitude, longitude, geojson, bounds=bbox
     )
     return geocoders.GoogleV3(api_key=api_key, domain=domain)
 
@@ -238,11 +284,13 @@ def google(
 )
 @bbox_option
 @common_options
-def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key, bbox):
+def mapquest(
+    ctx, database, table, location, delay, latitude, longitude, geojson, api_key, bbox
+):
     "Mapquest"
     click.echo("Using MapQuest geocoder")
     fill_context(
-        ctx, database, table, location, delay, latitude, longitude, bounds=bbox
+        ctx, database, table, location, delay, latitude, longitude, geojson, bounds=bbox
     )
     return geocoders.MapQuest(api_key=api_key)
 
@@ -261,11 +309,20 @@ def mapquest(ctx, database, table, location, delay, latitude, longitude, api_key
 )
 @common_options
 def nominatim(
-    ctx, database, table, location, delay, latitude, longitude, user_agent, domain
+    ctx,
+    database,
+    table,
+    location,
+    delay,
+    latitude,
+    longitude,
+    geojson,
+    user_agent,
+    domain,
 ):
     "Nominatim (OSM)"
     click.echo(f"Using Nominatim geocoder at {domain}")
-    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    fill_context(ctx, database, table, location, delay, latitude, longitude, geojson)
     return geocoders.Nominatim(user_agent=user_agent, domain=domain)
 
 
@@ -279,10 +336,12 @@ def nominatim(
     help="MapQuest API key",
 )
 @common_options
-def open_mapquest(ctx, database, table, location, delay, latitude, longitude, api_key):
+def open_mapquest(
+    ctx, database, table, location, delay, latitude, longitude, geojson, api_key
+):
     "Open Mapquest"
     click.echo("Using MapQuest geocoder")
-    fill_context(ctx, database, table, location, delay, latitude, longitude)
+    fill_context(ctx, database, table, location, delay, latitude, longitude, geojson)
     return geocoders.MapQuest(api_key=api_key)
 
 
@@ -304,7 +363,17 @@ def open_mapquest(ctx, database, table, location, delay, latitude, longitude, ap
 )
 @common_options
 def mapbox(
-    ctx, database, table, location, delay, latitude, longitude, api_key, bbox, proximity
+    ctx,
+    database,
+    table,
+    location,
+    delay,
+    latitude,
+    longitude,
+    geojson,
+    api_key,
+    bbox,
+    proximity,
 ):
     "Mapbox"
     click.echo("Using Mapbox geocoder")
@@ -316,6 +385,7 @@ def mapbox(
         delay,
         latitude,
         longitude,
+        geojson,
         bbox=bbox,
         proximity=proximity,
     )

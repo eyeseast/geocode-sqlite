@@ -84,7 +84,11 @@ def test_cli_geocode_table(db, geocoder):
         assert type(row.get("latitude")) == float
         assert type(row.get("longitude")) == float
 
-        result = geo_table.get(row["id"])
+        expected = geo_table.get(row["id"])
+        geometry = json.loads(expected["geometry"])
+        lng, lat = geometry["coordinates"]
+
+        assert (lng, lat) == (row["longitude"], row["latitude"])
 
 
 def test_custom_fieldnames(db, geocoder):
@@ -269,3 +273,37 @@ def test_label_results(db, geocoder):
     for row in table.rows:
         assert "geocoder" in row
         assert row["geocoder"] == geocoder.__class__.__name__
+
+
+def test_geojson_format(db, geocoder):
+    runner = CliRunner()
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    # run the cli with our test geocoder
+    result = runner.invoke(
+        cli,
+        [
+            "test",  # geocoder subcommand
+            str(DB_PATH),  # db
+            str(TABLE_NAME),  # table
+            "--db-path",  # path, for test geocoder
+            str(DB_PATH),
+            "--location",  # location
+            "{id}",
+            "--delay",  # delay
+            "0",
+            "--geojson",
+        ],
+    )
+
+    print(result.stdout)
+    assert 0 == result.exit_code
+
+    for row in table.rows:
+        assert type(row.get("geometry")) == str
+
+        expected = json.loads(geo_table.get(row["id"])["geometry"])
+        geometry = json.loads(row["geometry"])
+
+        assert expected == geometry

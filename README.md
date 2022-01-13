@@ -77,6 +77,7 @@ From there, we have a set of options passed to every geocoder:
 - delay: a delay between each call (some services require this)
 - latitude: latitude column name
 - longitude: longitude column name
+- geojson: store results as GeoJSON, instead of in latitude and longitude columns
 
 Each geocoder takes additional, specific arguments beyond these, such as API keys. Again, [geopy's documentation](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders) is an excellent resource.
 

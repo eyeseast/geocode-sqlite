@@ -24,12 +24,14 @@ CSV_DATA = tests / "innout.csv"
 
 
 @pytest.fixture
-def db():
+def db(request):
     db = Database(DB_PATH)
     table = db[TABLE_NAME]
 
+    pk = getattr(request, "param", "id")
+
     # load csv data, which will be geocoded
-    table.insert_all(csv.DictReader(open(CSV_DATA)), alter=True, pk="id")
+    table.insert_all(csv.DictReader(open(CSV_DATA)), alter=True, pk=pk)
 
     # load our geojson data, for our fake geocoder
     fc = json.load(open(GEOJSON_DATA))
@@ -56,6 +58,7 @@ def test_version():
         assert result.output.startswith("cli, version ")
 
 
+@pytest.mark.parametrize("db", ["id", None], indirect=True)
 def test_cli_geocode_table(db, geocoder):
     runner = CliRunner()
     table = db[TABLE_NAME]
@@ -243,7 +246,7 @@ def test_resume_table(db, geocoder):
 def test_geocode_list(db, geocoder):
     table = db[TABLE_NAME]
 
-    utah = list(table.rows_where('"state" = "UT"'))
+    utah = list(table.pks_and_rows_where('"state" = "UT"'))
     assert len(utah) == 10
 
     gen = geocode_list(utah, geocoder.geocode, "{id}")
@@ -255,9 +258,9 @@ def test_geocode_list(db, geocoder):
     # geocode the whole table, to cheeck results
     geocode_table(db, TABLE_NAME, geocoder, "{id}")
 
-    for row, success in done:
+    for pk, row, success in done:
         assert success
-        assert row == table.get(row["id"])
+        assert row == table.get(pk)
 
 
 def test_label_results(db, geocoder):

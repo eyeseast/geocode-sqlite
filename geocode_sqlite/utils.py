@@ -63,12 +63,12 @@ def geocode_table(
 
     count = 0
     log.info(f"Geocoding {todo} rows from {table.name}")
-    for row in rows:
+    for pk, row in rows:
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
-            pks = [row[pk] for pk in table.pks]
+            # pks = [row[pk] for pk in table.pks]
             table.update(
-                pks,
+                pk,
                 {
                     latitude_column: result.latitude,
                     longitude_column: result.longitude,
@@ -95,20 +95,21 @@ def geocode_list(
     """
     Geocode an arbitrary list of rows, returning a generator.
     This does not query or save geocoded results into a table.
-    If geocoding succeeds, it will yield a two-tuple:
+    If geocoding succeeds, it will yield a three-tuple:
+     - the primary key of the row (rowid or actual PK)
      - the row with latitude and longitude columns set
      - and True
 
     If geocoding fails, it will yield the original row and False.
     """
-    for row in rows:
+    for pk, row in rows:
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
             row[longitude_column] = result.longitude
             row[latitude_column] = result.latitude
             row["geocoder"] = get_geocoder_class(geocode)
 
-        yield row, bool(result)
+        yield pk, row, bool(result)
 
 
 def geocode_row(geocode, query_template, row, **kwargs):
@@ -135,7 +136,9 @@ def select_ungeocoded(
     if count:
         count = count[0]
 
-    rows = table.rows_where(f"{latitude_column} IS NULL OR {longitude_column} IS NULL")
+    rows = table.pks_and_rows_where(
+        f"{latitude_column} IS NULL OR {longitude_column} IS NULL"
+    )
 
     return rows, count
 

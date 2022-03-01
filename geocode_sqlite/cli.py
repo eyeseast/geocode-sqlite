@@ -159,13 +159,13 @@ def geocode(ctx, geocoder):
     )
 
     with click.progressbar(gen, length=count, label=f"{count} rows") as bar:
-        for row, success in bar:
-            pks = [row[pk] for pk in table.pks]
+        for pk, row, success in bar:
+            # pks = [row[pk] for pk in table.pks]
             if success:
-                table.update(pks, row)
+                table.update(pk, row)
                 done += 1
             else:
-                errors.append(pks)
+                errors.append(pk)
 
     click.echo("Geocoded {} rows".format(done))
     if errors:

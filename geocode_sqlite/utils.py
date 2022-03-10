@@ -73,10 +73,9 @@ def geocode_table(
 
     count = 0
     log.info(f"Geocoding {todo} rows from {table.name}")
-    for row in rows:
+    for pk, row in rows:
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
-            pks = [row[pk] for pk in table.pks]
             update = {
                 GEOCODER_COLUMN: geocoder.__class__.__name__,
             }
@@ -91,7 +90,7 @@ def geocode_table(
                 update[latitude_column] = result.latitude
                 update[longitude_column] = result.longitude
 
-            table.update(pks, update)
+            table.update(pk, update)
             count += 1
 
         else:
@@ -113,19 +112,20 @@ def geocode_list(
     """
     Geocode an arbitrary list of rows, returning a generator.
     This does not query or save geocoded results into a table.
-    If geocoding succeeds, it will yield a two-tuple:
+    If geocoding succeeds, it will yield a three-tuple:
+     - the primary key of the row (rowid or actual PK)
      - the row with latitude and longitude columns set
      - and True
 
     If geocoding fails, it will yield the original row and False.
     """
-    for row in rows:
+    for pk, row in rows:
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
             row = update_row(row, result, latitude_column, longitude_column, geojson)
             row[GEOCODER_COLUMN] = get_geocoder_class(geocode)
 
-        yield row, bool(result)
+        yield pk, row, bool(result)
 
 
 def geocode_row(geocode, query_template, row, **kwargs):
@@ -176,7 +176,7 @@ def select_ungeocoded(
         count = db.execute(
             f"SELECT count(*) FROM {table.name} WHERE {GEOMETRY_COLUMN} IS NULL"
         ).fetchone()
-        rows = table.rows_where(f"{GEOMETRY_COLUMN} IS NULL")
+        rows = table.pks_and_rows_where(f"{GEOMETRY_COLUMN} IS NULL")
 
     else:
         count = db.execute(
@@ -186,7 +186,7 @@ def select_ungeocoded(
             OR {longitude_column} IS NULL"""
         ).fetchone()
 
-        rows = table.rows_where(
+        rows = table.pks_and_rows_where(
             f"{latitude_column} IS NULL OR {longitude_column} IS NULL"
         )
 

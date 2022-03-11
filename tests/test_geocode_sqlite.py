@@ -9,13 +9,14 @@ from click.testing import CliRunner
 from geojson_to_sqlite.utils import import_features
 from geopy.location import Location
 from sqlite_utils import Database
+from sqlite_utils.utils import find_spatialite
 
 from geocode_sqlite.cli import cli, use_tester
 from geocode_sqlite.testing import DummyGeocoder
 from geocode_sqlite.utils import geocode_row, geocode_table, geocode_list
 
 tests = pathlib.Path(__file__).parent
-DB_PATH = tests / "test.db"
+# DB_PATH = tests / "test.db"
 TABLE_NAME = "innout_test"
 GEO_TABLE = "innout_geo"
 
@@ -24,8 +25,13 @@ CSV_DATA = tests / "innout.csv"
 
 
 @pytest.fixture
-def db(request):
-    db = Database(DB_PATH)
+def db_path(tmp_path):
+    return tmp_path / "test.db"
+
+
+@pytest.fixture
+def db(request, db_path):
+    db = Database(db_path)
     table = db[TABLE_NAME]
 
     pk = getattr(request, "param", "id")
@@ -35,14 +41,14 @@ def db(request):
 
     # load our geojson data, for our fake geocoder
     fc = json.load(open(GEOJSON_DATA))
-    import_features(DB_PATH, GEO_TABLE, fc["features"], alter=True)
+    import_features(db_path, GEO_TABLE, fc["features"], alter=True)
 
     # yield, instead of return, so we can cleanup
     yield db
 
     # start fresh every test
     print("Deleting test database")
-    DB_PATH.unlink()
+    db_path.unlink()
 
 
 @pytest.fixture
@@ -59,7 +65,7 @@ def test_version():
 
 
 @pytest.mark.parametrize("db", ["id", None], indirect=True)
-def test_cli_geocode_table(db, geocoder):
+def test_cli_geocode_table(db, db_path, geocoder):
     runner = CliRunner()
     table = db[TABLE_NAME]
     geo_table = db[GEO_TABLE]
@@ -69,10 +75,10 @@ def test_cli_geocode_table(db, geocoder):
         cli,
         [
             "test",  # geocoder subcommand
-            str(DB_PATH),  # db
+            str(db_path),  # db
             str(TABLE_NAME),  # table
             "--db-path",  # path, for test geocoder
-            str(DB_PATH),
+            str(db_path),
             "--location",  # location
             "{id}",
             "--delay",  # delay
@@ -94,7 +100,7 @@ def test_cli_geocode_table(db, geocoder):
         assert (lng, lat) == (row["longitude"], row["latitude"])
 
 
-def test_custom_fieldnames(db, geocoder):
+def test_custom_fieldnames(db, db_path, geocoder):
     runner = CliRunner()
     table = db[TABLE_NAME]
     geo_table = db[GEO_TABLE]
@@ -103,10 +109,10 @@ def test_custom_fieldnames(db, geocoder):
         cli,
         [
             "test",
-            str(DB_PATH),
+            str(db_path),
             str(TABLE_NAME),
             "-p",
-            str(DB_PATH),
+            str(db_path),
             "-l",
             "{id}",
             "-d",
@@ -128,7 +134,7 @@ def test_custom_fieldnames(db, geocoder):
         result = geo_table.get(row["id"])
 
 
-def test_rate_limiting(db, geocoder):
+def test_rate_limiting(db, db_path, geocoder):
     table = db[TABLE_NAME]
     runner = CliRunner()
 
@@ -148,10 +154,10 @@ def test_rate_limiting(db, geocoder):
         cli,
         [
             "test",
-            str(DB_PATH),
+            str(db_path),
             str(TABLE_NAME),
             "-p",
-            str(DB_PATH),
+            str(db_path),
             "--location",
             "{id}",
             "--delay",
@@ -166,7 +172,7 @@ def test_rate_limiting(db, geocoder):
     assert diff.total_seconds() >= len(utah) - 1  # delay is after, so one less
 
 
-def test_pass_kwargs(db, geocoder):
+def test_pass_kwargs(db, db_path, geocoder):
 
     # geocode it once
     geocode_table(db, TABLE_NAME, geocoder, "{id}")
@@ -176,7 +182,7 @@ def test_pass_kwargs(db, geocoder):
         cli,
         [
             "mapbox",
-            str(DB_PATH),
+            str(db_path),
             TABLE_NAME,  # already geocoded, so no calls
             "--location",
             "{id}",
@@ -193,7 +199,7 @@ def test_pass_kwargs(db, geocoder):
     assert 0 == result.exit_code
 
 
-def test_geocode_row(db, geocoder):
+def test_geocode_row(db, db_path, geocoder):
     table = db[TABLE_NAME]
     geo_table = db[GEO_TABLE]
 
@@ -278,7 +284,7 @@ def test_label_results(db, geocoder):
         assert row["geocoder"] == geocoder.__class__.__name__
 
 
-def test_geojson_format(db, geocoder):
+def test_geojson_format(db, db_path, geocoder):
     runner = CliRunner()
     table = db[TABLE_NAME]
     geo_table = db[GEO_TABLE]
@@ -288,10 +294,10 @@ def test_geojson_format(db, geocoder):
         cli,
         [
             "test",  # geocoder subcommand
-            str(DB_PATH),  # db
+            str(db_path),  # db
             str(TABLE_NAME),  # table
             "--db-path",  # path, for test geocoder
-            str(DB_PATH),
+            str(db_path),
             "--location",  # location
             "{id}",
             "--delay",  # delay
@@ -303,10 +309,80 @@ def test_geojson_format(db, geocoder):
     print(result.stdout)
     assert 0 == result.exit_code
 
-    for row in table.rows:
+    for pk, row in table.pks_and_rows_where():
+        assert "latitude" not in row
+        assert "longitude" not in row
+
         assert type(row.get("geometry")) == str
 
-        expected = json.loads(geo_table.get(row["id"])["geometry"])
+        expected = geo_table.get(pk)
         geometry = json.loads(row["geometry"])
 
-        assert expected == geometry
+        assert json.loads(expected["geometry"]) == geometry
+
+
+@pytest.mark.skipif(find_spatialite() is None, reason="SpatiaLite extension not found")
+def test_spatialite(db, db_path, geocoder):
+    db.init_spatialite()
+
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    # run the cli with our test geocoder
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "test",  # geocoder subcommand
+            str(db_path),  # db
+            str(TABLE_NAME),  # table
+            "--db-path",  # path, for test geocoder
+            str(db_path),
+            "--location",  # location
+            "{id}",
+            "--delay",  # delay
+            "0",
+            "--spatialite",  # implies geojson
+        ],
+    )
+
+    print(result.stdout)
+    assert 0 == result.exit_code
+
+    for pk, row in table.pks_and_rows_where():
+        assert "latitude" not in row
+        assert "longitude" not in row
+
+        assert type(row.get("geometry")) == bytes
+
+        expected = json.loads(geo_table.get(pk)["geometry"])
+        geometry = json.loads(
+            db.execute("select AsGeoJSON(?)", [row["geometry"]]).fetchone()[0]
+        )
+
+        assert geometry["type"] == expected["type"]
+        assert expected["coordinates"] == pytest.approx(geometry["coordinates"])
+
+
+@pytest.mark.skipif(find_spatialite() is None, reason="SpatiaLite extension not found")
+def test_spatialite_geocode_table(db, geocoder):
+    db.init_spatialite()
+
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    geocode_table(db, TABLE_NAME, geocoder, "{id}", spatialite=True)
+
+    for pk, row in table.pks_and_rows_where():
+        assert "latitude" not in row
+        assert "longitude" not in row
+
+        assert type(row.get("geometry")) == bytes
+
+        expected = json.loads(geo_table.get(pk)["geometry"])
+        geometry = json.loads(
+            db.execute("select AsGeoJSON(?)", [row["geometry"]]).fetchone()[0]
+        )
+
+        assert geometry["type"] == expected["type"]
+        assert expected["coordinates"] == pytest.approx(geometry["coordinates"])

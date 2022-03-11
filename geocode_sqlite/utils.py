@@ -21,6 +21,7 @@ def geocode_table(
     latitude_column="latitude",
     longitude_column="longitude",
     geojson=False,
+    spatialite=False,
     force=False,
     **kwargs,
 ):
@@ -43,17 +44,24 @@ def geocode_table(
     table = db[table_name]
     columns = table.columns_dict
 
-    if not geojson and latitude_column not in columns:
+    if spatialite:
+        db.init_spatialite()
+
+    if not (geojson or spatialite) and latitude_column not in columns:
         log.info(f"Adding latitude column: {latitude_column}")
         table.add_column(latitude_column, float)
 
-    if not geojson and longitude_column not in columns:
+    if not (geojson or spatialite) and longitude_column not in columns:
         log.info(f"Adding longitude column: {longitude_column}")
         table.add_column(longitude_column, float)
 
     if geojson and GEOMETRY_COLUMN not in columns:
         log.info("Adding geometry column")
         table.add_column(GEOMETRY_COLUMN, str)
+
+    if spatialite and GEOMETRY_COLUMN not in columns:
+        log.info("Adding geometry column")
+        table.add_geometry_column(GEOMETRY_COLUMN, "POINT")
 
     if GEOCODER_COLUMN not in columns:
         log.info("Adding geocoder column")
@@ -64,7 +72,7 @@ def geocode_table(
         table,
         latitude_column=latitude_column,
         longitude_column=longitude_column,
-        geojson=geojson,
+        geojson=(geojson or spatialite),
         force=force,
     )
 
@@ -80,17 +88,25 @@ def geocode_table(
                 GEOCODER_COLUMN: geocoder.__class__.__name__,
             }
 
+            conversions = {}
+
             if geojson:
                 update[GEOMETRY_COLUMN] = {
                     "type": "Point",
                     "coordinates": [result.longitude, result.latitude],
                 }
 
+            elif spatialite:
+                update[
+                    GEOMETRY_COLUMN
+                ] = f"POINT ({result.longitude} {result.latitude})"
+                conversions[GEOMETRY_COLUMN] = "GeomFromText(?, 4326)"
+
             else:
                 update[latitude_column] = result.latitude
                 update[longitude_column] = result.longitude
 
-            table.update(pk, update)
+            table.update(pk, update, conversions=conversions)
             count += 1
 
         else:
@@ -107,6 +123,7 @@ def geocode_list(
     latitude_column="latitude",
     longitude_column="longitude",
     geojson=False,
+    spatialite=False,
     **kwargs,
 ):
     """
@@ -122,7 +139,9 @@ def geocode_list(
     for pk, row in rows:
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
-            row = update_row(row, result, latitude_column, longitude_column, geojson)
+            row = update_row(
+                row, result, latitude_column, longitude_column, geojson, spatialite
+            )
             row[GEOCODER_COLUMN] = get_geocoder_class(geocode)
 
         yield pk, row, bool(result)
@@ -142,6 +161,7 @@ def update_row(
     latitude_column="latitude",
     longitude_column="longitude",
     geojson=False,
+    spatialite=False,
 ):
     """
     Update a row before saving, either setting latitude and longitude,
@@ -152,6 +172,9 @@ def update_row(
             "type": "Point",
             "coordinates": [result.longitude, result.latitude],
         }
+
+    elif spatialite:
+        row[GEOMETRY_COLUMN] = f"POINT ({result.longitude} {result.latitude})"
 
     else:
         row[longitude_column] = result.longitude

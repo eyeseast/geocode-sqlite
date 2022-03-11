@@ -65,7 +65,8 @@ Using this will add a geometry column instead of latitude and longitude columns.
                 "--spatialite",
                 is_flag=True,
                 default=False,
-                help="Store results as a SpatiaLite geometry",
+                help="""Store results as a SpatiaLite geometry.
+Using this will add a geometry column instead of latitude and longitude columns.""",
             ),
             click.pass_context,
         ]

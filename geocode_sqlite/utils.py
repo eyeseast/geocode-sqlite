@@ -7,6 +7,9 @@ from sqlite_utils import Database
 
 log = logging.getLogger("geocode_sqlite")
 
+GEOMETRY_COLUMN = "geometry"
+GEOCODER_COLUMN = "geocoder"
+
 
 def geocode_table(
     db,
@@ -17,6 +20,8 @@ def geocode_table(
     delay=0,
     latitude_column="latitude",
     longitude_column="longitude",
+    geojson=False,
+    spatialite=False,
     force=False,
     **kwargs,
 ):
@@ -37,24 +42,37 @@ def geocode_table(
         db = Database(db)
 
     table = db[table_name]
+    columns = table.columns_dict
 
-    if latitude_column not in table.columns_dict:
+    if spatialite:
+        db.init_spatialite()
+
+    if not (geojson or spatialite) and latitude_column not in columns:
         log.info(f"Adding latitude column: {latitude_column}")
         table.add_column(latitude_column, float)
 
-    if longitude_column not in table.columns_dict:
+    if not (geojson or spatialite) and longitude_column not in columns:
         log.info(f"Adding longitude column: {longitude_column}")
         table.add_column(longitude_column, float)
 
-    if "geocoder" not in table.columns_dict:
+    if geojson and GEOMETRY_COLUMN not in columns:
+        log.info("Adding geometry column")
+        table.add_column(GEOMETRY_COLUMN, str)
+
+    if spatialite and GEOMETRY_COLUMN not in columns:
+        log.info("Adding geometry column")
+        table.add_geometry_column(GEOMETRY_COLUMN, "POINT")
+
+    if GEOCODER_COLUMN not in columns:
         log.info("Adding geocoder column")
-        table.add_column("geocoder", str)
+        table.add_column(GEOCODER_COLUMN, str)
 
     rows, todo = select_ungeocoded(
         db,
         table,
         latitude_column=latitude_column,
         longitude_column=longitude_column,
+        geojson=(geojson or spatialite),
         force=force,
     )
 
@@ -66,15 +84,29 @@ def geocode_table(
     for pk, row in rows:
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
-            # pks = [row[pk] for pk in table.pks]
-            table.update(
-                pk,
-                {
-                    latitude_column: result.latitude,
-                    longitude_column: result.longitude,
-                    "geocoder": geocoder.__class__.__name__,
-                },
-            )
+            update = {
+                GEOCODER_COLUMN: geocoder.__class__.__name__,
+            }
+
+            conversions = {}
+
+            if geojson:
+                update[GEOMETRY_COLUMN] = {
+                    "type": "Point",
+                    "coordinates": [result.longitude, result.latitude],
+                }
+
+            elif spatialite:
+                update[
+                    GEOMETRY_COLUMN
+                ] = f"POINT ({result.longitude} {result.latitude})"
+                conversions[GEOMETRY_COLUMN] = "GeomFromText(?, 4326)"
+
+            else:
+                update[latitude_column] = result.latitude
+                update[longitude_column] = result.longitude
+
+            table.update(pk, update, conversions=conversions)
             count += 1
 
         else:
@@ -90,6 +122,8 @@ def geocode_list(
     *,
     latitude_column="latitude",
     longitude_column="longitude",
+    geojson=False,
+    spatialite=False,
     **kwargs,
 ):
     """
@@ -105,9 +139,10 @@ def geocode_list(
     for pk, row in rows:
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
-            row[longitude_column] = result.longitude
-            row[latitude_column] = result.latitude
-            row["geocoder"] = get_geocoder_class(geocode)
+            row = update_row(
+                row, result, latitude_column, longitude_column, geojson, spatialite
+            )
+            row[GEOCODER_COLUMN] = get_geocoder_class(geocode)
 
         yield pk, row, bool(result)
 
@@ -120,25 +155,66 @@ def geocode_row(geocode, query_template, row, **kwargs):
     return geocode(query, **kwargs)
 
 
+def update_row(
+    row,
+    result,
+    latitude_column="latitude",
+    longitude_column="longitude",
+    geojson=False,
+    spatialite=False,
+):
+    """
+    Update a row before saving, either setting latitude and longitude,
+    or creating a geojson object for a geometry column.
+    """
+    if geojson:
+        row[GEOMETRY_COLUMN] = {
+            "type": "Point",
+            "coordinates": [result.longitude, result.latitude],
+        }
+
+    elif spatialite:
+        row[GEOMETRY_COLUMN] = f"POINT ({result.longitude} {result.latitude})"
+
+    else:
+        row[longitude_column] = result.longitude
+        row[latitude_column] = result.latitude
+
+    return row
+
+
 def select_ungeocoded(
-    db, table, *, latitude_column="latitude", longitude_column="longitude", force=False
+    db,
+    table,
+    *,
+    latitude_column="latitude",
+    longitude_column="longitude",
+    geojson=False,
+    force=False,
 ):
     if force:
         return table.rows, table.count
 
-    count = db.execute(
-        f"""SELECT count(*) 
-        FROM {table.name} 
-        WHERE {latitude_column} IS NULL 
-        OR {longitude_column} IS NULL"""
-    ).fetchone()
+    if geojson:
+        count = db.execute(
+            f"SELECT count(*) FROM {table.name} WHERE {GEOMETRY_COLUMN} IS NULL"
+        ).fetchone()
+        rows = table.pks_and_rows_where(f"{GEOMETRY_COLUMN} IS NULL")
+
+    else:
+        count = db.execute(
+            f"""SELECT count(*) 
+            FROM {table.name} 
+            WHERE {latitude_column} IS NULL 
+            OR {longitude_column} IS NULL"""
+        ).fetchone()
+
+        rows = table.pks_and_rows_where(
+            f"{latitude_column} IS NULL OR {longitude_column} IS NULL"
+        )
 
     if count:
         count = count[0]
-
-    rows = table.pks_and_rows_where(
-        f"{latitude_column} IS NULL OR {longitude_column} IS NULL"
-    )
 
     return rows, count
 

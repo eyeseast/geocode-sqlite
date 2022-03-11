@@ -6,7 +6,7 @@ tests/%.db: tests/innout.geojson tests/innout.csv
 
 .PHONY: test
 test: tests/test.db
-	geocode-sqlite test tests/test.db innout_test -p tests/test.db -l "{id}" -d .1
+	geocode-sqlite test tests/test.db innout_test -p tests/test.db -l "{id}" -d .1 --spatialite
 
 .PHONY: nominatim
 nominatim: tests/nominatim.db
@@ -45,8 +45,8 @@ mapbox: tests/mapbox.db
 
 .PHONY: run
 run:
-	datasette serve tests/*.db
+	datasette serve tests/*.db --load-extension spatialite
 
 .PHONY: clean
 clean:
-	rm tests/test.db
+	rm -f tests/test.db

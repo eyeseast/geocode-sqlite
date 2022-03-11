@@ -18,3 +18,5 @@ dist/
 
 .env
 .vscode
+Pipfile
+Pipfile.lock

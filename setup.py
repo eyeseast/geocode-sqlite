@@ -34,6 +34,6 @@ setup(
         geocode-sqlite=geocode_sqlite.cli:cli
     """,
     install_requires=requirements,
-    extras_require={"test": ["pytest", "geojson-to-sqlite"]},
+    extras_require={"test": ["pytest", "geojson-to-sqlite", "pytest-env"]},
     tests_require=["geocode-sqlite[test]"],
 )

@@ -194,6 +194,8 @@ def test_pass_kwargs(db, db_path, geocoder):
             "--proximity",
             "-71.0",
             "42.3",
+            "--api-key",
+            "fake-key",
         ],
     )
     assert 0 == result.exit_code

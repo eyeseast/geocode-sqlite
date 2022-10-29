@@ -61,6 +61,7 @@ The CLI currently supports these geocoders:
 - `mapquest` (and `open-mapquest`)
 - `nominatim`
 - `mapbox`
+- `opencage`
 
 More will be added soon.
 

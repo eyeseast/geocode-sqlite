@@ -42,6 +42,11 @@ mapbox: tests/mapbox.db
 		--delay 1 \
 		--api-key "$(MAPBOX_API_KEY)"
 
+.PHONY: opencage
+opencage: tests/opencage.db
+	geocode-sqlite opencage $^ innout_test \
+		--location "{full}, {city}, {state} {postcode}" \
+		--api-key "$(OPENCAGE_API_KEY)"
 
 .PHONY: run
 run:

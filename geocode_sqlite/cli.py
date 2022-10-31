@@ -143,7 +143,7 @@ def cli(ctx):
 
 
 # name changed in click 8.0
-result_callback = getattr(cli, "result_callback", cli.resultcallback)
+result_callback = getattr(cli, "result_callback", None) or getattr(cli, "resultcallback")
 
 
 @result_callback()

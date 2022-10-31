@@ -494,3 +494,41 @@ def mapbox(
         proximity=proximity,
     )
     return geocoders.MapBox(api_key=api_key)
+
+
+@cli.command("opencage")
+@click.option(
+    "-k",
+    "--api-key",
+    type=click.STRING,
+    required=True,
+    envvar="OPENCAGE_API_KEY",
+    help="OpenCage geocoding API key",
+)
+@common_options
+def opencage(
+    ctx,
+    database,
+    table,
+    location,
+    delay,
+    latitude,
+    longitude,
+    geojson,
+    spatialite,
+    api_key,
+):
+    "OpenCage"
+    click.echo("Using OpenCage geocoder")
+    fill_context(
+        ctx,
+        database,
+        table,
+        location,
+        delay,
+        latitude,
+        longitude,
+        geojson,
+        spatialite,
+    )
+    return geocoders.OpenCage(api_key=api_key)

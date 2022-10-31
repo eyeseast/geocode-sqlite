@@ -59,18 +59,22 @@ The CLI currently supports these geocoders:
 - `bing`
 - `googlev3`
 - `mapquest` (and `open-mapquest`)
-- `nominatim`
 - `mapbox`
+- `nominatim`
 - `opencage`
 
-More will be added soon.
+#### Adding new geocoders
+
+1. Open an issue with the name of the geocoding service as the ticket title ([example](https://github.com/eyeseast/geocode-sqlite/issues/35)). Put any noteworthy implementation details in the ticket body, like where to get an API key if one is required.
+2. Fork the repo and add a geocoder.
+3. Add an example to the `Makefile`. Add tests if there's new shared functionality.
 
 ### Common arguments and options
 
 Each geocoder needs to know where to find the data it's working with. These are the first two arguments:
 
-- database: a path to a SQLite file, which must already exist
-- table: the name of a table, in that database, which exists and has data to geocode
+- `database`: a path to a SQLite file, which must already exist
+- `table`: the name of a table, in that database, which exists and has data to geocode
 
 From there, we have a set of options passed to every geocoder:
 
@@ -131,9 +135,8 @@ To run the tests:
 
 ```sh
 pytest
-
 ```
 
-Please remember that this library is mainly glue code between other well-tested projects, specifically: click, geopy and sqlite-utils. Tests should focus on making sure those parts fit together correctly. We can assume the parts themselves already work.
+Please remember that this library is mainly glue code between other well-tested projects, specifically: [click](https://click.palletsprojects.com/), [geopy](https://geopy.readthedocs.io/en/stable/) and [sqlite-utils](https://sqlite-utils.datasette.io/en/stable/). Tests should focus on making sure those parts fit together correctly. We can assume the parts themselves already work.
 
 To that end, there is a test geocoder included: `geocode_sqlite.testing.DummyGeocoder`. That geocoder works with an included dataset of In-N-Out Burger locations provided by [AllThePlaces](https://www.alltheplaces.xyz/). It works like a normal GeoPy geocoder, except it will only return results for In-N-Out locations using the included database.

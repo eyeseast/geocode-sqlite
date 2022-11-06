@@ -416,7 +416,6 @@ def test_capture_raw(db, db_path, geocoder):
         ],
     )
 
-    print(result.stdout)
     assert 0 == result.exit_code
 
     for row in table.rows:
@@ -457,8 +456,31 @@ def test_capture_raw_custom(db, db_path, geocoder):
         ],
     )
 
-    print(result.stdout)
     assert 0 == result.exit_code
+
+    for row in table.rows:
+        assert type(row.get(RAW)) == str
+
+        raw = json.loads(row[RAW])
+        result = geo_table.get(row["id"])
+
+        assert raw == result
+
+
+def test_geocode_table_raw(db, geocoder):
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    RAW = "raw"
+
+    assert "latitude" not in table.columns_dict
+    assert "longitude" not in table.columns_dict
+    assert "raw" not in table.columns_dict
+
+    count = geocode_table(db, TABLE_NAME, geocoder, "{id}", raw=RAW)
+
+    # did we get the whole table?
+    assert count == table.count
 
     for row in table.rows:
         assert type(row.get(RAW)) == str

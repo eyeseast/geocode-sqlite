@@ -22,6 +22,7 @@ def geocode_table(
     longitude_column="longitude",
     geojson=False,
     spatialite=False,
+    raw="",
     force=False,
     **kwargs,
 ):
@@ -124,6 +125,7 @@ def geocode_list(
     longitude_column="longitude",
     geojson=False,
     spatialite=False,
+    raw="",
     **kwargs,
 ):
     """
@@ -140,7 +142,7 @@ def geocode_list(
         result = geocode_row(geocode, query_template, row, **kwargs)
         if result:
             row = update_row(
-                row, result, latitude_column, longitude_column, geojson, spatialite
+                row, result, latitude_column, longitude_column, geojson, spatialite, raw
             )
             row[GEOCODER_COLUMN] = get_geocoder_class(geocode)
 
@@ -162,6 +164,7 @@ def update_row(
     longitude_column="longitude",
     geojson=False,
     spatialite=False,
+    raw="",
 ):
     """
     Update a row before saving, either setting latitude and longitude,
@@ -179,6 +182,10 @@ def update_row(
     else:
         row[longitude_column] = result.longitude
         row[latitude_column] = result.latitude
+
+    if raw:
+        # save the raw dictionary, let sqlite-utils turn it into a str
+        row[raw] = result.raw
 
     return row
 

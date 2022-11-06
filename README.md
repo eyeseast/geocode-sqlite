@@ -84,8 +84,29 @@ From there, we have a set of options passed to every geocoder:
 - `longitude`: longitude column name
 - `geojson`: store results as GeoJSON, instead of in latitude and longitude columns
 - `spatialite`: store results in a SpatiaLite geometry column, instead of in latitude and longitude columns
+- `raw`: store raw geocoding results in a JSON column
 
 Each geocoder takes additional, specific arguments beyond these, such as API keys. Again, [geopy's documentation](https://geopy.readthedocs.io/en/latest/#module-geopy.geocoders) is an excellent resource.
+
+## Using SpatiaLite
+
+The `--spatialite` flag will store results in a [geometry column](https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/cookbook_topics.adminstration.html#topic_TABLE_to_SpatialTable), instead of `latitude` and `longitude` columns. This is useful if you're doing other GIS operations, such as using a [spatial index](https://www.gaia-gis.it/fossil/libspatialite/wiki?name=SpatialIndex). See the [SpatiaLite cookbook](https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/index.html) and [functions list](https://www.gaia-gis.it/gaia-sins/spatialite-sql-latest.html) for more of what's possible.
+
+## Capturing additional geocoding data
+
+Geocoding services typically return more data than just coordinates. This might include accuracy, normalized addresses or other context. This can be captured using the `--raw` flag. By default, this will add a `raw` column and store the full geocoding response as JSON. If you want to rename that column, pass a value, like `--raw custom_raw`.
+
+The shape of this response object will vary between services. You can query specific values using [SQLite's built-in JSON functions](https://www.sqlite.org/json1.html). For example, this will work with Google's geocoder:
+
+```sql
+select
+  json_extract(raw, '$.formatted_address') as address,
+  json_extract(raw, '$.geometry.location_type') as location_type
+from
+  innout_test
+```
+
+Check each geocoding service's documentation for what's included in the response.
 
 ## Python API
 

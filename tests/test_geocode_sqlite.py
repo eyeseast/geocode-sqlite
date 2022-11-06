@@ -426,3 +426,44 @@ def test_capture_raw(db, db_path, geocoder):
         result = geo_table.get(row["id"])
 
         assert raw == result
+
+
+def test_capture_raw_custom(db, db_path, geocoder):
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    RAW = "raw_custom"
+
+    assert "latitude" not in table.columns_dict
+    assert "longitude" not in table.columns_dict
+    assert RAW not in table.columns_dict
+
+    # run the cli with our test geocoder
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "test",  # geocoder subcommand
+            str(db_path),  # db
+            str(TABLE_NAME),  # table
+            "--db-path",  # path, for test geocoder
+            str(db_path),
+            "--location",  # location
+            "{id}",
+            "--delay",  # delay
+            "0",
+            "--raw",
+            RAW,  # capture raw output with a custom name
+        ],
+    )
+
+    print(result.stdout)
+    assert 0 == result.exit_code
+
+    for row in table.rows:
+        assert type(row.get(RAW)) == str
+
+        raw = json.loads(row[RAW])
+        result = geo_table.get(row["id"])
+
+        assert raw == result

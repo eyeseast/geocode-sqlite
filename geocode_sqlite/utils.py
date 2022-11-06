@@ -56,6 +56,13 @@ def geocode_table(
         log.info(f"Adding longitude column: {longitude_column}")
         table.add_column(longitude_column, float)
 
+    if raw and raw != "raw":
+        log.info(f"Using custom raw result field: {raw}")
+
+    if raw and raw not in columns:
+        log.info(f"Adding {raw} column")
+        table.add_column(raw, str)
+
     if geojson and GEOMETRY_COLUMN not in columns:
         log.info("Adding geometry column")
         table.add_column(GEOMETRY_COLUMN, str)
@@ -106,6 +113,9 @@ def geocode_table(
             else:
                 update[latitude_column] = result.latitude
                 update[longitude_column] = result.longitude
+
+            if raw:
+                update[raw] = result.raw
 
             table.update(pk, update, conversions=conversions)
             count += 1

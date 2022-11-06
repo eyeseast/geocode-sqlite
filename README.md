@@ -89,7 +89,7 @@ Each geocoder takes additional, specific arguments beyond these, such as API key
 
 ## Python API
 
-The command line interface aims to support the most common options for each geocoder. For more find-grained control, use the Python API.
+The command line interface aims to support the most common options for each geocoder. For more fine-grained control, use the Python API.
 
 As with the CLI, this assumes you already have a SQLite database and a table of location data.
 

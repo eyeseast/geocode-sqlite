@@ -388,3 +388,41 @@ def test_spatialite_geocode_table(db, geocoder):
 
         assert geometry["type"] == expected["type"]
         assert expected["coordinates"] == pytest.approx(geometry["coordinates"])
+
+
+def test_capture_raw(db, db_path, geocoder):
+    table = db[TABLE_NAME]
+    geo_table = db[GEO_TABLE]
+
+    assert "latitude" not in table.columns_dict
+    assert "longitude" not in table.columns_dict
+    assert "raw" not in table.columns_dict
+
+    # run the cli with our test geocoder
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "test",  # geocoder subcommand
+            str(db_path),  # db
+            str(TABLE_NAME),  # table
+            "--db-path",  # path, for test geocoder
+            str(db_path),
+            "--location",  # location
+            "{id}",
+            "--delay",  # delay
+            "0",
+            "--raw",  # capture raw output
+        ],
+    )
+
+    print(result.stdout)
+    assert 0 == result.exit_code
+
+    for row in table.rows:
+        assert type(row.get("raw")) == str
+
+        raw = json.loads(row["raw"])
+        result = geo_table.get(row["id"])
+
+        assert raw == result

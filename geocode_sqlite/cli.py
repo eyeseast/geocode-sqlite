@@ -68,6 +68,14 @@ Using this will add a geometry column instead of latitude and longitude columns.
                 help="""Store results as a SpatiaLite geometry.
 Using this will add a geometry column instead of latitude and longitude columns.""",
             ),
+            click.option(
+                "--raw",
+                is_flag=False,
+                default="",
+                flag_value="raw",
+                help="""Store raw geocoding results as JSON.
+This column will be called 'raw' by default. Pass a value to rename it.""",
+            ),
             click.pass_context,
         ]
     ):
@@ -86,6 +94,7 @@ def fill_context(
     longitude,
     geojson,
     spatialite,
+    raw,
     **kwargs,
 ):
     "Add common options to context"
@@ -98,6 +107,7 @@ def fill_context(
         longitude=longitude,
         geojson=geojson,
         spatialite=spatialite,
+        raw=raw,
         kwargs=kwargs,
     )
 
@@ -113,6 +123,7 @@ def extract_context(ctx):
         ctx.obj["longitude"],
         ctx.obj["geojson"],
         ctx.obj["spatialite"],
+        ctx.obj["raw"],
         ctx.obj.get("kwargs", {}),
     )
 
@@ -143,7 +154,9 @@ def cli(ctx):
 
 
 # name changed in click 8.0
-result_callback = getattr(cli, "result_callback", None) or getattr(cli, "resultcallback")
+result_callback = getattr(cli, "result_callback", None) or getattr(
+    cli, "resultcallback"
+)
 
 
 @result_callback()
@@ -159,6 +172,7 @@ def geocode(ctx, geocoder):
         longitude,
         geojson,
         spatialite,
+        raw,
         kwargs,
     ) = extract_context(ctx)
 
@@ -178,6 +192,9 @@ def geocode(ctx, geocoder):
     if longitude != "longitude":
         click.echo(f"Using custom longitude field: {longitude}")
 
+    if raw and raw != "raw":
+        click.echo(f"Using custom raw result field: {raw}")
+
     if not (geojson or spatialite) and latitude not in columns:
         click.echo(f"Adding column: {latitude}")
         table.add_column(latitude, float)
@@ -193,6 +210,10 @@ def geocode(ctx, geocoder):
     if spatialite and GEOMETRY_COLUMN not in columns:
         click.echo("Adding geometry column")
         table.add_geometry_column(GEOMETRY_COLUMN, "POINT")
+
+    if raw and raw not in columns:
+        click.echo(f"Adding {raw} column")
+        table.add_column(raw, str)
 
     if GEOCODER_COLUMN not in table.columns_dict:
         click.echo("Adding geocoder column")
@@ -220,6 +241,7 @@ def geocode(ctx, geocoder):
         longitude_column=longitude,
         geojson=geojson,
         spatialite=spatialite,
+        raw=raw,
         **kwargs,
     )
 
@@ -244,6 +266,11 @@ def geocode(ctx, geocoder):
             click.echo(f"{pk}: {location.format(row)}")
 
 
+#############
+# Geocoders #
+#############
+
+
 @cli.command("test", hidden=True)
 @common_options
 @click.option("-p", "--db-path", type=click.Path(exists=True))
@@ -257,12 +284,22 @@ def use_tester(
     longitude,
     geojson,
     spatialite,
+    raw,
     db_path,
 ):
     "Only use this for testing"
     click.echo(f"Using test geocoder with database {db_path}")
     fill_context(
-        ctx, database, table, location, delay, latitude, longitude, geojson, spatialite
+        ctx,
+        database,
+        table,
+        location,
+        delay,
+        latitude,
+        longitude,
+        geojson,
+        spatialite,
+        raw,
     )
     return DummyGeocoder(Database(db_path))
 
@@ -287,12 +324,22 @@ def bing(
     longitude,
     geojson,
     spatialite,
+    raw,
     api_key,
 ):
     "Bing"
     click.echo("Using Bing geocoder")
     fill_context(
-        ctx, database, table, location, delay, latitude, longitude, geojson, spatialite
+        ctx,
+        database,
+        table,
+        location,
+        delay,
+        latitude,
+        longitude,
+        geojson,
+        spatialite,
+        raw,
     )
     return geocoders.Bing(api_key=api_key)
 
@@ -321,6 +368,7 @@ def google(
     longitude,
     geojson,
     spatialite,
+    raw,
     api_key,
     domain,
     bbox,
@@ -337,6 +385,7 @@ def google(
         longitude,
         geojson,
         spatialite,
+        raw,
         bounds=bbox,
     )
     return geocoders.GoogleV3(api_key=api_key, domain=domain)
@@ -363,6 +412,7 @@ def mapquest(
     longitude,
     geojson,
     spatialite,
+    raw,
     api_key,
     bbox,
 ):
@@ -378,6 +428,7 @@ def mapquest(
         longitude,
         geojson,
         spatialite,
+        raw,
         bounds=bbox,
     )
     return geocoders.MapQuest(api_key=api_key)
@@ -406,13 +457,23 @@ def nominatim(
     longitude,
     geojson,
     spatialite,
+    raw,
     user_agent,
     domain,
 ):
     "Nominatim (OSM)"
     click.echo(f"Using Nominatim geocoder at {domain}")
     fill_context(
-        ctx, database, table, location, delay, latitude, longitude, geojson, spatialite
+        ctx,
+        database,
+        table,
+        location,
+        delay,
+        latitude,
+        longitude,
+        geojson,
+        spatialite,
+        raw,
     )
     return geocoders.Nominatim(user_agent=user_agent, domain=domain)
 
@@ -437,12 +498,22 @@ def open_mapquest(
     longitude,
     geojson,
     spatialite,
+    raw,
     api_key,
 ):
     "Open Mapquest"
     click.echo("Using MapQuest geocoder")
     fill_context(
-        ctx, database, table, location, delay, latitude, longitude, geojson, spatialite
+        ctx,
+        database,
+        table,
+        location,
+        delay,
+        latitude,
+        longitude,
+        geojson,
+        spatialite,
+        raw,
     )
     return geocoders.MapQuest(api_key=api_key)
 
@@ -474,6 +545,7 @@ def mapbox(
     longitude,
     geojson,
     spatialite,
+    raw,
     api_key,
     bbox,
     proximity,
@@ -490,6 +562,7 @@ def mapbox(
         longitude,
         geojson,
         spatialite,
+        raw,
         bbox=bbox,
         proximity=proximity,
     )
@@ -516,6 +589,7 @@ def opencage(
     longitude,
     geojson,
     spatialite,
+    raw,
     api_key,
 ):
     "OpenCage"
@@ -530,5 +604,6 @@ def opencage(
         longitude,
         geojson,
         spatialite,
+        raw,
     )
     return geocoders.OpenCage(api_key=api_key)

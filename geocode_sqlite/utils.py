@@ -3,12 +3,15 @@ This is the Python interface
 """
 import logging
 from geopy.extra.rate_limiter import RateLimiter
+from geopy.geocoders import options
 from sqlite_utils import Database
 
 log = logging.getLogger("geocode_sqlite")
 
 GEOMETRY_COLUMN = "geometry"
 GEOCODER_COLUMN = "geocoder"
+
+options.default_timeout = 5
 
 
 def geocode_table(

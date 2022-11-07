@@ -3,7 +3,7 @@ import os
 
 VERSION = "0.8.1"
 
-requirements = ["click>=7.0", "sqlite_utils", "geopy"]
+requirements = ["click>=7.0", "sqlite_utils", "geopy", "requests"]
 
 
 def get_long_description():

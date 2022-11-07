@@ -260,10 +260,10 @@ def geocode(ctx, geocoder):
 
     click.echo("Geocoded {} rows".format(done))
     if errors:
-        click.echo("The following rows failed to geocode:")
+        click.echo("The following rows failed to geocode:", err=True)
         for pk in errors:
             row = table.get(pk)
-            click.echo(f"{pk}: {location.format(row)}")
+            click.echo(f"{pk}: {location.format(**row)}", err=True)
 
 
 #############

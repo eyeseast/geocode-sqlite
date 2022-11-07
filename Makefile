@@ -28,6 +28,7 @@ google: tests/google.db
 	geocode-sqlite googlev3 $^ innout_test \
 		--location "{full}, {city}, {state} {postcode}" \
 		--raw \
+		--delay 0 \
 		--api-key "$(GOOGLE_API_KEY)" \
 		--bbox 33.030551 -119.787326 34.695341 -115.832248
 

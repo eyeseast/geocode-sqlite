@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 
 requirements = ["click>=7.0", "sqlite_utils", "geopy", "requests"]
 
